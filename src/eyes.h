@@ -13,7 +13,7 @@
 #define EYE_RADIUS 12
 
 #define BEZIER_CIRCLE 0.488
-#define BEZIER_SEGMENTS 0.2
+#define BEZIER_SEGMENTS 0.25
 
 struct Eye {
 	i32 pos_x, pos_y;
@@ -27,4 +27,4 @@ struct Eye {
 	void draw_normal(m5gfx::M5Canvas canvas) const;
 };
 
-void draw_eyes(m5gfx::M5Canvas &canvas);
+void draw_eyes(m5gfx::M5Canvas &canvas, unsigned long tick_count);
