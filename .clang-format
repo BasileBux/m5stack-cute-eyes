@@ -12,6 +12,7 @@ AllowShortIfStatementsOnASingleLine: AllIfsAndElse
 AllowShortLambdasOnASingleLine: All
 AllowShortLoopsOnASingleLine: true
 AllowShortNamespacesOnASingleLine: true
+NamespaceIndentation: All
 AlwaysBreakBeforeMultilineStrings: false
 BreakBeforeBraces: Attach
 BreakAfterJavaFieldAnnotations: true

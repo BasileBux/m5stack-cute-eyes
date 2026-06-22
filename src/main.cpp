@@ -29,24 +29,23 @@ void setup() {
 
 	display.startWrite();
 	display.fillScreen(BACKGROUND_COLOR);
-
-	m5gfx::M5Canvas canvas(&display);
-	canvas.setColorDepth(16);
-	// Adjust size relative to what we want to dinamically draw on the display
-	// Reducing this is a big improvement in memory usage
-	canvas.createSprite(display.width(), display.height());
-
-	canvas.fillSprite(TFT_BLACK);
-	draw_eyes(canvas, 0);
-	canvas.pushSprite(0, 0);
-
 	display.endWrite();
 }
 
 // Function is called FPS times per second
-void frame(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
-	draw_eyes(canvas, tick_count);
+void frame(m5gfx::M5Canvas &canvas, unsigned long tick_count, Face &face) {
+	face.draw(canvas, tick_count);
 	canvas.pushSprite(0, 0);
+}
+
+void exec(Face &face) {
+	if (M5.BtnA.wasPressed()) {
+		face.expression = FaceExpression::NORMAL;
+	} else if (M5.BtnB.wasPressed()) {
+		face.expression = FaceExpression::ANGRY;
+	} else if (M5.BtnC.wasPressed()) {
+		face.expression = FaceExpression::SAD;
+	}
 }
 
 unsigned long elapsed_time = 0;
@@ -54,21 +53,30 @@ unsigned long time_reset = 0;
 
 unsigned long tick_count = 0;
 
-bool canvas_init = false;
+bool loop_init = false;
 
 void loop() {
+	M5.update();
 	static m5gfx::M5Canvas canvas(&display);
-	if (!canvas_init) {
+
+	if (!loop_init) {
+		canvas.setColorDepth(16);
+		// Adjust size relative to what we want to dinamically draw on the display
+		// Reducing this is a big improvement in memory usage
 		canvas.createSprite(display.width(), display.height());
-		canvas_init = true;
+		loop_init = true;
 	}
+	static Face face(canvas, FOREGROUND_COLOR, NormalEye::EYE_RADIUS);
+
+	exec(face);
+
 	display.waitDisplay();
 	elapsed_time = millis();
 	if (elapsed_time - time_reset >= frame_delay) {
 		time_reset = elapsed_time;
 		tick_count++;
 		display.startWrite();
-		frame(canvas, tick_count);
+		frame(canvas, tick_count, face);
 		display.endWrite();
 	}
 }
