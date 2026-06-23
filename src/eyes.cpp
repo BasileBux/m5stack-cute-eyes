@@ -59,24 +59,22 @@ void Eye::draw_normal(m5gfx::M5Canvas &canvas, float radius, u16 color) const {
 	canvas.floodFill(this->pos_x + this->width / 2, this->pos_y + this->height / 2, TFT_WHITE);
 }
 
-void Eye::draw_down(m5gfx::M5Canvas &canvas, float radius, u16 color) const {
-	const i32 ANGLE = 6;
-	const i32 DIAGONAL = radius * 2;
-
+void Eye::draw_down(m5gfx::M5Canvas &canvas, float radius, u16 color, i32 angle) const {
+	const i32 diagonal = angle * 2 * 2;
 	this->clear(canvas, radius);
 
 	auto current =
-		Bezier::acute_top_left(radius, ANGLE).move_to(pos_x, pos_y).draw(canvas, TFT_WHITE);
+		Bezier::acute_top_left(radius, angle).move_to(pos_x, pos_y).draw(canvas, TFT_WHITE);
 
-	current = Bezier::diagonal(width - (2 * radius), DIAGONAL)
+	current = Bezier::diagonal(width - (2 * radius), diagonal)
 				  .move_to(current.x3, current.y3)
 				  .draw(canvas, TFT_WHITE);
 
-	current = Bezier::obtuse_top_right(radius, ANGLE)
+	current = Bezier::obtuse_top_right(radius, angle)
 				  .move_to(current.x3, current.y3)
 				  .draw(canvas, TFT_WHITE);
 
-	current = Bezier::vertical(radius, height - (2 * radius) - DIAGONAL, true)
+	current = Bezier::vertical(radius, height - (2 * radius) - diagonal, true)
 				  .move_to(current.x3, current.y3)
 				  .draw(canvas, TFT_WHITE);
 
@@ -103,21 +101,19 @@ void Eye::draw_down(m5gfx::M5Canvas &canvas, float radius, u16 color) const {
 	canvas.floodFill(pos_x + width / 2, pos_y + height / 2, TFT_WHITE);
 }
 
-void Eye::draw_up(m5gfx::M5Canvas &canvas, float radius, u16 color) const {
-	const i32 ANGLE = 6;
-	const i32 DIAGONAL = radius * 2;
-
+void Eye::draw_up(m5gfx::M5Canvas &canvas, float radius, u16 color, i32 angle) const {
+	const i32 diagonal = angle * 2 * 2;
 	this->clear(canvas, radius);
 
-	auto current = Bezier::obtuse_top_left(radius, ANGLE)
-					   .move_to(pos_x, pos_y + DIAGONAL)
+	auto current = Bezier::obtuse_top_left(radius, angle)
+					   .move_to(pos_x, pos_y + diagonal)
 					   .draw(canvas, TFT_WHITE);
 
-	current = Bezier::diagonal(width - (2 * radius), -DIAGONAL)
+	current = Bezier::diagonal(width - (2 * radius), -diagonal)
 				  .move_to(current.x3, current.y3)
 				  .draw(canvas, TFT_WHITE);
 
-	current = Bezier::acute_top_right(radius, ANGLE)
+	current = Bezier::acute_top_right(radius, angle)
 				  .move_to(current.x3, current.y3)
 				  .draw(canvas, TFT_WHITE);
 
@@ -140,9 +136,9 @@ void Eye::draw_up(m5gfx::M5Canvas &canvas, float radius, u16 color) const {
 						   current.y0 - radius)	 // horizontal is left to right
 				  .draw(canvas, TFT_WHITE);
 
-	current = Bezier::vertical(radius, height - (2 * radius) - DIAGONAL, false)
+	current = Bezier::vertical(radius, height - (2 * radius) - diagonal, false)
 				  // vertical is top to bottom, so we need to inverse the y position
-				  .move_to(current.x3, current.y3 - (height - 2 * radius) + DIAGONAL)
+				  .move_to(current.x3, current.y3 - (height - 2 * radius) + diagonal)
 				  .draw(canvas, TFT_WHITE);
 
 	canvas.floodFill(pos_x + width / 2, pos_y + height / 2, TFT_WHITE);
@@ -151,8 +147,8 @@ void Eye::draw_up(m5gfx::M5Canvas &canvas, float radius, u16 color) const {
 Size Face::get_params() const {
 	switch (this->expression) {
 	case NORMAL: return NormalEye::EYE_SIZE;
-	case ANGRY: return AngrySadEye::EYE_SIZE;  // TODO:
-	case SAD: return AngrySadEye::EYE_SIZE;	   // TODO:
+	case ANGRY: return NormalEye::EYE_SIZE;
+	case SAD: return NormalEye::EYE_SIZE;	   // TODO:
 	case WEIRDED: return NormalEye::EYE_SIZE;  // TODO:
 	default: return NormalEye::EYE_SIZE;	   // TODO:
 	}
@@ -163,6 +159,7 @@ Face::Face(m5gfx::M5Canvas &canvas, u16 color, float radius) {
 	this->color = color;
 	this->radius = radius;
 	this->expression = NORMAL;
+	this->state = State();
 
 	i32 width = this->canvas.width();
 	i32 height = this->canvas.height();
@@ -174,7 +171,17 @@ Face::Face(m5gfx::M5Canvas &canvas, u16 color, float radius) {
 	this->right_pos_y = this->left_pos_y;
 }
 
-void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) const {
+float blink_function(float t) {
+	float ret = 0.f;
+	if (t <= 0.4f) {
+		ret = 1 - 2.5f * t;					  // linear decrease from 1 to 0
+	} else {								  // t > 0.4f
+		ret = 1.f - expf(-8.f * (t - 0.4f));  // exponential increase from 0 to 1
+	}
+	return ret;
+}
+
+void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 	float w_angle = (float)tick_count * IdleAnimation::WIDTH_ANGLE;
 	float h_angle = (float)tick_count * IdleAnimation::HEIGHT_ANGLE;
 	float y_angle = (float)tick_count * IdleAnimation::Y_ANGLE;
@@ -185,13 +192,31 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) const {
 	i32 y_offset = (i32)(std::sin(y_angle) * IdleAnimation::Y_DELTA);
 
 	Size eye_size = this->get_params();
+
 	i32 current_width = eye_size.width + w_offset;
 	i32 current_height = eye_size.height + h_offset;
+
+	i32 blink_offset = 0;
+	if (this->state == State::BLINKING) {
+		// reduce the height to simulate blinking
+		this->state.transition_ticks++;
+
+		if (this->state.transition_ticks > BlinkAnimation::DURATION) {
+			this->state.transition_to(State::IDLE);
+		} else {
+			i32 blink_size =
+				(i32)(blink_function((float)this->state.transition_ticks * BlinkAnimation::ANGLE) *
+					  (float)current_height);
+			// blink_size = std::max(blink_size, (i32)NormalEye::EYE_RADIUS * 2); // NOTE: Temporary fix but it doesn't close the eyes enough
+			blink_offset = current_height - blink_size;
+			current_height = blink_size;
+		}
+	}
 
 	// Shift the starting positions by half the offset so the eyes grow from their center
 	i32 left_x = this->left_pos_x - w_offset / 2;
 	i32 right_x = this->right_pos_x - w_offset / 2;
-	i32 pos_y = this->left_pos_y - h_offset / 2 + y_offset;
+	i32 pos_y = this->left_pos_y - h_offset / 2 + y_offset + blink_offset;
 
 	Eye left_eye(left_x, pos_y, current_width, current_height);
 	Eye right_eye(right_x, pos_y, current_width, current_height);

@@ -44,7 +44,8 @@ void exec(Face &face) {
 	} else if (M5.BtnB.wasPressed()) {
 		face.expression = FaceExpression::ANGRY;
 	} else if (M5.BtnC.wasPressed()) {
-		face.expression = FaceExpression::SAD;
+		face.state.transition_to(State::BLINKING);
+		// face.expression = FaceExpression::SAD;
 	}
 }
 

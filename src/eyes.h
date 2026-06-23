@@ -8,28 +8,27 @@ struct Size {
 	i32 width, height;
 };
 
-// TODO: For animations reasons, we might need to make all eyes the same size
 namespace NormalEye {
 	const u32 EYE_WIDTH = 66;
 	const u32 EYE_HEIGHT = 95;
 	const Size EYE_SIZE = { EYE_WIDTH, EYE_HEIGHT };
 	const u32 EYE_RADIUS = 12;
 	const u32 EYE_DISTANCE = 30;
-	const u32 Y_OFFSET = 20;
+	const u32 Y_OFFSET = 30;
 }  // namespace NormalEye
 
 namespace AngrySadEye {
-	const u32 EYE_HEIGHT = NormalEye::EYE_HEIGHT;
-	const Size EYE_SIZE = { NormalEye::EYE_WIDTH, EYE_HEIGHT };
+	const i32 ANGLE = 6;
+	const i32 DIAGONAL = ANGLE * 2 * 2;
 }  // namespace AngrySadEye
 
 namespace IdleAnimation {
 	const u8 WIDTH_DELTA = 1;
-	const u32 WIDTH_DURATION = 30;
+	const u32 WIDTH_DURATION = 30;	// ticks
 	const float WIDTH_ANGLE = 2.0f * M_PI / (float)WIDTH_DURATION;
 
 	const u8 HEIGHT_DELTA = 2;
-	const u32 HEIGHT_DURATION = 20;
+	const u32 HEIGHT_DURATION = 20;	 // ticks
 	const float HEIGHT_ANGLE = 2.0f * M_PI / (float)HEIGHT_DURATION;
 
 	const u8 Y_DELTA = 3;
@@ -37,10 +36,15 @@ namespace IdleAnimation {
 	const float Y_ANGLE = 2.0f * M_PI / (float)Y_DURATION;
 }  // namespace IdleAnimation
 
+namespace BlinkAnimation {
+	const u32 DURATION = 12;  // ticks
+	const float ANGLE = 1.f / (float)DURATION;
+}  // namespace BlinkAnimation
+
 const i32 MAX_EYE_WIDTH =
 	NormalEye::EYE_WIDTH + IdleAnimation::WIDTH_DELTA + IdleAnimation::WIDTH_DELTA;
 const i32 MAX_EYE_HEIGHT =
-	AngrySadEye::EYE_HEIGHT + IdleAnimation::HEIGHT_DELTA * 2 + IdleAnimation::Y_DELTA * 2;
+	NormalEye::EYE_HEIGHT + IdleAnimation::HEIGHT_DELTA * 2 + IdleAnimation::Y_DELTA * 2;
 
 struct Eye {
 	i32 pos_x, pos_y;
@@ -48,8 +52,10 @@ struct Eye {
 	Eye(i32 pos_x, i32 pos_y, i32 width, i32 height);
 
 	void draw_normal(m5gfx::M5Canvas &canvas, float radius, u16 color) const;
-	void draw_down(m5gfx::M5Canvas &canvas, float radius, u16 color) const;
-	void draw_up(m5gfx::M5Canvas &canvas, float radius, u16 color) const;
+	void draw_down(m5gfx::M5Canvas &canvas, float radius, u16 color,
+				   i32 angle = AngrySadEye::ANGLE) const;
+	void draw_up(m5gfx::M5Canvas &canvas, float radius, u16 color,
+				 i32 angle = AngrySadEye::ANGLE) const;
 	void clear(m5gfx::M5Canvas &canvas, float radius) const;
 };
 
@@ -65,16 +71,48 @@ enum FaceExpression {
 	// WICKED,
 };
 
+class State {
+   public:
+	unsigned long transition_ticks;
+
+	enum Value : uint8_t {
+		IDLE,
+		BLINKING,
+		TRANSITIONING,
+	};
+
+	State()
+		: value(IDLE)
+		, transition_ticks(0) {}
+	State(Value aState)
+		: value(aState)
+		, transition_ticks(0) {}
+
+	// Allow switch and comparisons.
+	constexpr operator Value() const { return value; }
+	// Prevent usage: if(fruit)
+	explicit operator bool() const = delete;
+
+	// TODO: block new transitions if already transitioning
+	void transition_to(Value newState) {
+		value = newState;
+		transition_ticks = 0;
+	}
+
+   private:
+	Value value;
+};
+
 // Doesn't have position as it will only depend on the canvas
 struct Face {
-	// Eye left_eye, right_eye; // TODO:
 	m5gfx::M5Canvas canvas;
 	i32 left_pos_x, left_pos_y, right_pos_x, right_pos_y;
 	u16 color;
 	float radius;
 	FaceExpression expression;
+	State state;
 
 	Face(m5gfx::M5Canvas &canvas, u16 color, float radius);
-	void draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) const;
+	void draw(m5gfx::M5Canvas &canvas, unsigned long tick_count);
 	Size get_params() const;
 };
