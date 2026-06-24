@@ -41,19 +41,20 @@ void frame(m5gfx::M5Canvas &canvas, unsigned long tick_count, Face &face) {
 }
 
 void exec(Face &face) {
+	// DEBUG: removed the blinking transition for now
 	if (face.ticks_before_blink == 0) {
 		face.ticks_before_blink = esp_random() % BlinkAnimation::MAX_WAIT_TICKS;
-		face.state.transition_to(State::BLINKING);
+		// face.state.transition_to(State::BLINKING);
 	} else {
 		face.ticks_before_blink--;
 	}
 
 	if (M5.BtnA.wasPressed()) {
-		face.expression = FaceExpression::NORMAL;
+		face.set_expression(FaceExpression::NORMAL);
 	} else if (M5.BtnB.wasPressed()) {
-		face.expression = FaceExpression::ANGRY;
+		face.set_expression(FaceExpression::ANGRY);
 	} else if (M5.BtnC.wasPressed()) {
-		face.expression = FaceExpression::SAD;
+		face.set_expression(FaceExpression::SAD);
 	}
 }
 

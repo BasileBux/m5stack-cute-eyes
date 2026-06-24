@@ -220,6 +220,24 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 		}
 	}
 
+	i32 angle = AngrySadEye::ANGLE;
+	if (this->state == State::NORMAL_TO_ANGLED) {
+		this->state.transition_ticks++;
+		if (this->state.transition_ticks > TransitionAnimation::DURATION) {
+			this->state.transition_to(State::IDLE);
+		} else {
+			angle = (i32)(this->state.transition_ticks * TransitionAnimation::ANGLE);
+		}
+	} else if (this->state == State::ANGLED_TO_NORMAL) {
+		this->state.transition_ticks++;
+		if (this->state.transition_ticks > TransitionAnimation::DURATION) {
+			this->state.transition_to(State::IDLE);
+			this->expression = NORMAL;
+		} else {
+			angle -= (i32)(this->state.transition_ticks * TransitionAnimation::ANGLE);
+		}
+	}
+
 	// Shift the starting positions by half the offset so the eyes grow from their center
 	i32 left_x = this->left_pos_x - w_offset / 2;
 	i32 right_x = this->right_pos_x - w_offset / 2;
@@ -234,20 +252,42 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 		right_eye.draw_normal(canvas, this->radius, this->color);
 		break;
 	case ANGRY:
-		left_eye.draw_down(canvas, this->radius, this->color);
-		right_eye.draw_up(canvas, this->radius, this->color);
+		left_eye.draw_down(canvas, this->radius, this->color, angle);
+		right_eye.draw_up(canvas, this->radius, this->color, angle);
 		break;
 	case WEIRDED:  // TODO: implement weirded expression
 		left_eye.draw_normal(canvas, this->radius, this->color);
 		right_eye.draw_normal(canvas, this->radius, this->color);
 		break;
 	case SAD:
-		left_eye.draw_up(canvas, this->radius, this->color);
-		right_eye.draw_down(canvas, this->radius, this->color);
+		left_eye.draw_up(canvas, this->radius, this->color, angle);
+		right_eye.draw_down(canvas, this->radius, this->color, angle);
 		break;
 	default:
 		left_eye.draw_normal(canvas, this->radius, this->color);
 		right_eye.draw_normal(canvas, this->radius, this->color);
 		break;
 	}
+}
+
+void Face::set_expression(FaceExpression new_expression) {
+	switch (new_expression) {
+		case NORMAL:
+			if (this->expression == ANGRY || this->expression == SAD) {
+				this->state.transition_to(State::ANGLED_TO_NORMAL);
+			}
+			return; // Return as we don't want to change the expression immediately, but rather after the transition
+		case ANGRY:
+		case SAD:
+			if (this->expression == NORMAL) {
+				this->state.transition_to(State::NORMAL_TO_ANGLED);
+			}
+			break;
+		case WEIRDED:
+			// No transition for WEIRDED, just set the expression
+			break;
+		default:
+			return; // Invalid expression, do nothing
+	}
+	this->expression = new_expression;
 }

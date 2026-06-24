@@ -22,6 +22,11 @@ namespace AngrySadEye {
 	const i32 DIAGONAL = ANGLE * 2 * 2;
 }  // namespace AngrySadEye
 
+namespace TransitionAnimation {
+	const u32 DURATION = 4;  // ticks
+	const float ANGLE = (float)AngrySadEye::ANGLE / (float)DURATION;
+}
+
 namespace IdleAnimation {
 	const u8 WIDTH_DELTA = 1;
 	const u32 WIDTH_DURATION = 30;	// ticks
@@ -38,7 +43,7 @@ namespace IdleAnimation {
 
 namespace BlinkAnimation {
 	const u32 MAX_WAIT_TICKS = 300;
-	const u32 DURATION = 8;  // ticks
+	const u32 DURATION = 8;	 // ticks
 	const float ANGLE = 1.f / (float)DURATION;
 }  // namespace BlinkAnimation
 
@@ -79,7 +84,8 @@ class State {
 	enum Value : uint8_t {
 		IDLE,
 		BLINKING,
-		TRANSITIONING,
+		NORMAL_TO_ANGLED,
+		ANGLED_TO_NORMAL,
 	};
 
 	State()
@@ -116,5 +122,6 @@ struct Face {
 
 	Face(m5gfx::M5Canvas &canvas, u16 color, float radius);
 	void draw(m5gfx::M5Canvas &canvas, unsigned long tick_count);
+	void set_expression(FaceExpression new_expression);
 	Size get_params() const;
 };
