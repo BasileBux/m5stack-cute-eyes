@@ -1,6 +1,8 @@
 #include <M5GFX.h>
 #include <M5Unified.h>
 
+#include "esp_random.h"
+
 M5GFX display;	// 320x240px, ~70Hz
 
 #include "eyes.h"
@@ -39,20 +41,26 @@ void frame(m5gfx::M5Canvas &canvas, unsigned long tick_count, Face &face) {
 }
 
 void exec(Face &face) {
+	if (face.ticks_before_blink == 0) {
+		face.ticks_before_blink = esp_random() % BlinkAnimation::MAX_WAIT_TICKS;
+		face.state.transition_to(State::BLINKING);
+	} else {
+		face.ticks_before_blink--;
+	}
+
 	if (M5.BtnA.wasPressed()) {
 		face.expression = FaceExpression::NORMAL;
 	} else if (M5.BtnB.wasPressed()) {
 		face.expression = FaceExpression::ANGRY;
 	} else if (M5.BtnC.wasPressed()) {
-		face.state.transition_to(State::BLINKING);
-		// face.expression = FaceExpression::SAD;
+		face.expression = FaceExpression::SAD;
 	}
 }
 
 unsigned long elapsed_time = 0;
 unsigned long time_reset = 0;
 
-unsigned long tick_count = 0;
+u64 tick_count = 0;	 // Won't ever overflow at 60FPS, but just in case, we use a 64-bit integer.
 
 bool loop_init = false;
 
@@ -61,7 +69,7 @@ void loop() {
 	static m5gfx::M5Canvas canvas(&display);
 
 	if (!loop_init) {
-		canvas.setColorDepth(16);
+		canvas.setColorDepth(8);
 		// Adjust size relative to what we want to dinamically draw on the display
 		// Reducing this is a big improvement in memory usage
 		canvas.createSprite(display.width(), display.height());

@@ -37,7 +37,8 @@ namespace IdleAnimation {
 }  // namespace IdleAnimation
 
 namespace BlinkAnimation {
-	const u32 DURATION = 12;  // ticks
+	const u32 MAX_WAIT_TICKS = 300;
+	const u32 DURATION = 8;  // ticks
 	const float ANGLE = 1.f / (float)DURATION;
 }  // namespace BlinkAnimation
 
@@ -111,6 +112,7 @@ struct Face {
 	float radius;
 	FaceExpression expression;
 	State state;
+	u32 ticks_before_blink;
 
 	Face(m5gfx::M5Canvas &canvas, u16 color, float radius);
 	void draw(m5gfx::M5Canvas &canvas, unsigned long tick_count);

@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "bezier.h"
+#include "esp_random.h"
 
 Eye::Eye(i32 pos_x, i32 pos_y, i32 width, i32 height)
 	: pos_x(pos_x)
@@ -14,9 +15,9 @@ Eye::Eye(i32 pos_x, i32 pos_y, i32 width, i32 height)
 void Eye::clear(m5gfx::M5Canvas &canvas, float radius) const {
 	i32 width_d = MAX_EYE_WIDTH - this->width;
 	i32 height_d = MAX_EYE_HEIGHT - this->height;
-	canvas.fillRect(this->pos_x - width_d / 2 - (i32)radius,
-					this->pos_y - height_d / 2 - (i32)radius, MAX_EYE_WIDTH + (i32)radius * 2,
-					MAX_EYE_HEIGHT + (i32)radius * 2, TFT_BLACK);
+	canvas.fillRect(this->pos_x - width_d / 2 - (i32)radius * 2,
+					this->pos_y - height_d / 2 - (i32)radius * 2, MAX_EYE_WIDTH + (i32)radius * 4,
+					MAX_EYE_HEIGHT + (i32)radius * 4, TFT_BLACK);
 }
 
 void Eye::draw_normal(m5gfx::M5Canvas &canvas, float radius, u16 color) const {
@@ -160,6 +161,7 @@ Face::Face(m5gfx::M5Canvas &canvas, u16 color, float radius) {
 	this->radius = radius;
 	this->expression = NORMAL;
 	this->state = State();
+	this->ticks_before_blink = esp_random() % BlinkAnimation::MAX_WAIT_TICKS;
 
 	i32 width = this->canvas.width();
 	i32 height = this->canvas.height();
@@ -196,6 +198,7 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 	i32 current_width = eye_size.width + w_offset;
 	i32 current_height = eye_size.height + h_offset;
 
+	// TODO: blinking in expressions other than NORMAL should transition to NORMAL while blinking
 	i32 blink_offset = 0;
 	if (this->state == State::BLINKING) {
 		// reduce the height to simulate blinking
@@ -207,7 +210,11 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 			i32 blink_size =
 				(i32)(blink_function((float)this->state.transition_ticks * BlinkAnimation::ANGLE) *
 					  (float)current_height);
-			// blink_size = std::max(blink_size, (i32)NormalEye::EYE_RADIUS * 2); // NOTE: Temporary fix but it doesn't close the eyes enough
+			i32 min_blink_size = (i32)(NormalEye::EYE_RADIUS * 2 +
+									   (this->expression == ANGRY || this->expression == SAD
+											? AngrySadEye::ANGLE * 2 * 2
+											: 0));
+			blink_size = std::max(blink_size, min_blink_size);
 			blink_offset = current_height - blink_size;
 			current_height = blink_size;
 		}

@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Robot Eyes — Cubic Bézier Editor</title>
+  <style>
+    :root {
+      --bg: #111;
+      --panel: #151515;
+      --panel-border: #2a2a2a;
+      --text: #e0e0e0;
+      --muted: #888;
+      --accent: #4dabf7;
+      --accent-dim: #228be6;
+      --danger: #ff6b6b;
+      --success: #51cf66;
+      --p0: #ff6b6b;
+      --p1: #ffd43b;
+      --p2: #51cf66;
+      --p3: #4dabf7;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    #app {
+      display: flex;
+      height: 100%;
+    }
+
+    #canvas-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: #080808;
+      overflow: hidden;
+    }
+
+    canvas {
+      background: #000;
+      box-shadow: 0 0 0 1px var(--panel-border);
+      cursor: crosshair;
+      touch-action: none;
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    #overlay {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      pointer-events: none;
+      line-height: 1.5;
+    }
+
+    #sidebar {
+      width: 420px;
+      min-width: 360px;
+      background: var(--panel);
+      border-left: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .scroll {
+      overflow-y: auto;
+      padding: 20px;
+      flex: 1;
+    }
+
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .subtitle { color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+
+    .section { margin-bottom: 22px; }
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    label { font-size: 12px; color: var(--muted); min-width: 70px; }
+
+    input[type="text"], input[type="number"], select {
+      background: var(--bg);
+      border: 1px solid var(--panel-border);
+      color: var(--text);
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    input[type="text"], input[type="number"] { width: 100%; }
+    input[type="number"] { width: 70px; }
+    input[type="range"] { flex: 1; }
+    select { width: auto; min-width: 100px; }
+
+    button {
+      background: var(--bg);
+      border: 1px solid var(--panel-border);
+      color: var(--text);
+      padding: 7px 11px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+    button.primary:hover { background: var(--accent-dim); border-color: var(--accent-dim); color: #fff; }
+    button.danger { border-color: var(--danger); color: var(--danger); }
+    button.danger:hover { background: var(--danger); color: #000; }
+    button.small { padding: 4px 8px; font-size: 11px; }
+
+    .checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    /* Constants */
+    .const-table { width: 100%; border-collapse: collapse; }
+    .const-table th {
+      text-align: left;
+      font-size: 10px;
+      color: var(--muted);
+      font-weight: 600;
+      padding: 4px 6px;
+    }
+    .const-table td { padding: 3px 4px; }
+    .const-table td input { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; }
+    .const-table td:first-child { width: 35%; }
+    .const-table td:nth-child(2) { width: 45%; }
+    .const-table td:last-child { width: 20%; text-align: right; }
+    .const-table td:last-child button { padding: 3px 7px; }
+    .const-value {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 11px;
+      color: var(--success);
+      padding-left: 6px;
+    }
+
+    /* Curves */
+    .curve-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+    .curve-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 9px;
+      background: var(--bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .curve-item:hover { border-color: var(--accent); }
+    .curve-item.selected { border-color: var(--accent); background: rgba(77, 171, 247, 0.08); }
+    .curve-color { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+    .curve-name { flex: 1; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .curve-actions { display: flex; gap: 4px; }
+    .curve-actions button { padding: 3px 7px; font-size: 11px; }
+
+    /* Point rows */
+    .point-row { margin-bottom: 6px; align-items: stretch; }
+    .point-row > span { font-size: 12px; width: 24px; font-weight: 700; align-self: center; }
+    .point-row .coord { flex: 1; }
+    .point-row .coord label { display: block; font-size: 10px; margin-bottom: 3px; color: var(--muted); }
+    .point-row .coord input { width: 100%; font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; }
+    .point-row .value {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 10px;
+      color: var(--muted);
+      align-self: center;
+      min-width: 40px;
+      text-align: right;
+    }
+    .p0 { color: var(--p0); }
+    .p1 { color: var(--p1); }
+    .p2 { color: var(--p2); }
+    .p3 { color: var(--p3); }
+
+    /* Presets */
+    .preset-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+
+    /* Code */
+    textarea {
+      width: 100%;
+      height: 160px;
+      background: var(--bg);
+      border: 1px solid var(--panel-border);
+      color: var(--text);
+      border-radius: 5px;
+      padding: 10px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
+      resize: vertical;
+    }
+
+    .footer {
+      padding: 10px 20px;
+      border-top: 1px solid var(--panel-border);
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--success);
+      color: #000;
+      padding: 9px 16px;
+      border-radius: 5px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 100;
+    }
+    .toast.show { opacity: 1; }
+
+    @media (max-width: 900px) {
+      #app { flex-direction: column; }
+      #sidebar { width: 100%; height: 45%; min-width: auto; border-left: none; border-top: 1px solid var(--panel-border); }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="canvas-wrap">
+      <canvas id="bezierCanvas" width="960" height="720"></canvas>
+      <div id="overlay">
+        drag the colored dots • P0/P3 are endpoints • P1/P2 are control points<br />
+        manual inputs accept expressions like <code>EYE_X + RADIUS</code>
+      </div>
+    </div>
+
+    <div id="sidebar">
+      <div class="scroll">
+        <h1>Robot Eyes — Bézier Editor</h1>
+        <div class="subtitle">Prototype 4-point cubic Bézier curves for your M5Stack eyes.</div>
+
+        <div class="section">
+          <div class="section-title">Canvas</div>
+          <div class="row">
+            <label>Size</label>
+            <select id="canvasSize">
+              <option value="640x480">640 × 480</option>
+              <option value="800x600">800 × 600</option>
+              <option value="960x720" selected>960 × 720</option>
+              <option value="1280x960">1280 × 960</option>
+            </select>
+            <label class="checkbox"><input type="checkbox" id="lcdMode" checked /> LCD bg</label>
+          </div>
+          <div class="row">
+            <label class="checkbox"><input type="checkbox" id="showGrid" checked /> Grid</label>
+            <label class="checkbox"><input type="checkbox" id="snapGrid" /> Snap</label>
+            <input type="range" id="gridSize" min="8" max="64" value="16" />
+            <span id="gridSizeVal" style="font-size:12px;min-width:24px;text-align:right;">16</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">
+            Constants
+            <button id="addConstant" class="small primary">+ Add</button>
+          </div>
+          <table class="const-table">
+            <thead>
+              <tr><th>Name</th><th>Expression</th><th></th></tr>
+            </thead>
+            <tbody id="constList"></tbody>
+          </table>
+          <div class="hint">
+            Constants may reference each other. They are available in point inputs and generated code.
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Curves</div>
+          <div id="curveList" class="curve-list"></div>
+          <div class="row">
+            <button id="addCurve" class="primary" style="flex:1;">+ Add curve</button>
+            <button id="clearCurves" class="danger">Clear</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Active curve points</div>
+          <div id="pointInputs"></div>
+          <div class="hint">Write expressions (e.g. <code>WIDTH / 2</code>) or plain numbers. Dragging converts to a number.</div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Presets</div>
+          <div class="preset-grid">
+            <button data-preset="line-h">Horizontal line</button>
+            <button data-preset="line-v">Vertical line</button>
+            <button data-preset="corner-tl">Top-left corner</button>
+            <button data-preset="corner-tr">Top-right corner</button>
+            <button data-preset="corner-bl">Bottom-left corner</button>
+            <button data-preset="corner-br">Bottom-right corner</button>
+          </div>
+          <div class="hint">Presets match the helpers in <code>../src/bezier.h</code>. They use the current <code>RADIUS</code> constant if defined, else 80.</div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Generated code</div>
+          <textarea id="codeOut" readonly></textarea>
+          <div class="row" style="margin-top:10px;">
+            <button id="copyCode" class="primary" style="flex:1;">Copy all</button>
+            <button id="copyOnlyActive">Copy active</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        opens with <code>file://</code> or any static server
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">Copied!</div>
+
+  <script>
+    const canvas = document.getElementById('bezierCanvas');
+    const ctx = canvas.getContext('2d');
+    const POINT_RADIUS = 7;
+    const HIT_RADIUS = 14;
+    const colors = ['#ff6b6b', '#ffd43b', '#51cf66', '#4dabf7', '#da77f2', '#ffa94d'];
+
+    function nextId() {
+      return Math.random().toString(36).slice(2, 9);
+    }
+
+    // State
+    let constants = [
+      { name: 'RADIUS', expr: '80' },
+      { name: 'WIDTH', expr: '120' },
+      { name: 'HEIGHT', expr: '80' },
+      { name: 'EYE_X', expr: '80' },
+      { name: 'EYE_Y', expr: '50' }
+    ];
+
+    function makePoint(xExpr, yExpr) {
+      return { xExpr: String(xExpr), yExpr: String(yExpr) };
+    }
+
+    function defaultCurve() {
+      return {
+        id: nextId(),
+        name: 'Curve 1',
+        color: colors[0],
+        p0: makePoint('EYE_X', 'EYE_Y + HEIGHT'),
+        p1: makePoint('EYE_X', 'EYE_Y + HEIGHT / 2'),
+        p2: makePoint('EYE_X + WIDTH', 'EYE_Y + HEIGHT / 2'),
+        p3: makePoint('EYE_X + WIDTH', 'EYE_Y + HEIGHT')
+      };
+    }
+
+    let curves = [defaultCurve()];
+    let activeId = curves[0].id;
+    let dragging = null;
+
+    // DOM refs
+    const showGrid = document.getElementById('showGrid');
+    const snapGrid = document.getElementById('snapGrid');
+    const gridSize = document.getElementById('gridSize');
+    const gridSizeVal = document.getElementById('gridSizeVal');
+    const lcdMode = document.getElementById('lcdMode');
+    const canvasSize = document.getElementById('canvasSize');
+    const constList = document.getElementById('constList');
+    const pointInputs = document.getElementById('pointInputs');
+    const codeOut = document.getElementById('codeOut');
+    const curveList = document.getElementById('curveList');
+
+    function getActive() {
+      return curves.find(c => c.id === activeId) || curves[0];
+    }
+
+    function getConstScope() {
+      // iterative evaluation allowing forward references
+      const scope = {};
+      const maxPasses = 100;
+      let changed = true;
+      for (let pass = 0; pass < maxPasses && changed; pass++) {
+        changed = false;
+        for (const c of constants) {
+          if (!c.name) continue;
+          try {
+            const v = evaluate(c.expr, scope);
+            if (scope[c.name] !== v) {
+              scope[c.name] = v;
+              changed = true;
+            }
+          } catch (e) {
+            // leave undefined, will retry next pass
+          }
+        }
+      }
+      return scope;
+    }
+
+    function evaluate(expr, scope) {
+      const names = Object.keys(scope || getConstScope());
+      const values = names.map(n => (scope || getConstScope())[n]);
+      const fn = new Function(...names, 'return (' + expr + ');');
+      const result = fn(...values);
+      if (typeof result !== 'number' || !Number.isFinite(result)) {
+        throw new Error('not a number');
+      }
+      return result;
+    }
+
+    function evalExpr(expr) {
+      try { return evaluate(expr); } catch (e) { return NaN; }
+    }
+
+    function getPoint(p) {
+      return { x: evalExpr(p.xExpr), y: evalExpr(p.yExpr) };
+    }
+
+    function snap(v) {
+      if (!snapGrid.checked) return v;
+      const g = +gridSize.value;
+      return Math.round(v / g) * g;
+    }
+
+    function draw() {
+      ctx.fillStyle = lcdMode.checked ? '#000' : '#111';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      if (showGrid.checked) drawGrid();
+      for (const c of curves) drawCurve(c, c.id === activeId);
+    }
+
+    function drawGrid() {
+      const g = +gridSize.value;
+      ctx.strokeStyle = lcdMode.checked ? '#111' : '#1f1f1f';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = 0; x <= canvas.width; x += g) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+      for (let y = 0; y <= canvas.height; y += g) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+      ctx.stroke();
+      ctx.strokeStyle = '#333';
+      ctx.beginPath();
+      ctx.moveTo(0, 0); ctx.lineTo(canvas.width, 0);
+      ctx.moveTo(0, 0); ctx.lineTo(0, canvas.height);
+      ctx.stroke();
+    }
+
+    function drawCurve(c, isActive) {
+      const pts = [getPoint(c.p0), getPoint(c.p1), getPoint(c.p2), getPoint(c.p3)];
+      if (pts.some(p => !Number.isFinite(p.x) || !Number.isFinite(p.y))) return;
+
+      if (isActive) {
+        ctx.strokeStyle = '#444';
+        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        ctx.lineTo(pts[1].x, pts[1].y);
+        ctx.lineTo(pts[2].x, pts[2].y);
+        ctx.lineTo(pts[3].x, pts[3].y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      ctx.strokeStyle = isActive ? '#fff' : c.color;
+      ctx.lineWidth = isActive ? 3 : 2;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      ctx.bezierCurveTo(pts[1].x, pts[1].y, pts[2].x, pts[2].y, pts[3].x, pts[3].y);
+      ctx.stroke();
+
+      const pointColors = ['#ff6b6b', '#ffd43b', '#51cf66', '#4dabf7'];
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.arc(pts[i].x, pts[i].y, POINT_RADIUS, 0, Math.PI * 2);
+        ctx.fillStyle = pointColors[i];
+        ctx.fill();
+        if (isActive) {
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      }
+
+      if (isActive) {
+        ctx.fillStyle = '#888';
+        ctx.font = '11px sans-serif';
+        ctx.fillText('P0', pts[0].x + 12, pts[0].y - 10);
+        ctx.fillText('P3', pts[3].x + 12, pts[3].y - 10);
+      }
+    }
+
+    function renderConstants() {
+      const scope = getConstScope();
+      const tbody = document.getElementById('constList');
+      tbody.innerHTML = '';
+      for (let i = 0; i < constants.length; i++) {
+        const c = constants[i];
+        const tr = document.createElement('tr');
+        const val = scope[c.name];
+        tr.innerHTML = `
+          <td><input type="text" data-idx="${i}" data-field="name" value="${c.name}" placeholder="NAME" /></td>
+          <td><input type="text" data-idx="${i}" data-field="expr" value="${c.expr}" placeholder="value or expr" /></td>
+          <td>
+            <span class="const-value">${fmtVal(val)}</span>
+            <button class="small danger" data-idx="${i}" data-action="delete">×</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+
+      for (const input of tbody.querySelectorAll('input')) {
+        input.addEventListener('input', () => {
+          const idx = +input.dataset.idx;
+          const field = input.dataset.field;
+          constants[idx][field] = input.value;
+          renderConstants();
+          draw();
+          updateInputs();
+          updateCode();
+        });
+      }
+      for (const btn of tbody.querySelectorAll('button[data-action="delete"]')) {
+        btn.addEventListener('click', () => {
+          constants.splice(+btn.dataset.idx, 1);
+          renderConstants();
+          draw();
+          updateInputs();
+          updateCode();
+        });
+      }
+    }
+
+    function updateInputs() {
+      const c = getActive();
+      pointInputs.innerHTML = '';
+      const labels = ['P0', 'P1', 'P2', 'P3'];
+      const keys = ['p0', 'p1', 'p2', 'p3'];
+      for (let i = 0; i < 4; i++) {
+        const p = c[keys[i]];
+        const row = document.createElement('div');
+        row.className = 'row point-row';
+        row.innerHTML = `
+          <span class="${keys[i]}">${labels[i]}</span>
+          <div class="coord">
+            <label>x</label>
+            <input type="text" data-curve="${c.id}" data-pt="${keys[i]}" data-axis="x" value="${p.xExpr}" />
+          </div>
+          <div class="value">${fmtVal(evalExpr(p.xExpr))}</div>
+          <div class="coord">
+            <label>y</label>
+            <input type="text" data-curve="${c.id}" data-pt="${keys[i]}" data-axis="y" value="${p.yExpr}" />
+          </div>
+          <div class="value">${fmtVal(evalExpr(p.yExpr))}</div>
+        `;
+        pointInputs.appendChild(row);
+      }
+
+      for (const input of pointInputs.querySelectorAll('input')) {
+        input.addEventListener('input', () => {
+          const curve = curves.find(x => x.id === input.dataset.curve);
+          const pt = input.dataset.pt;
+          const axis = input.dataset.axis;
+          curve[pt][axis === 'x' ? 'xExpr' : 'yExpr'] = input.value;
+          const row = input.closest('.point-row');
+          const valEl = row.querySelectorAll('.value')[axis === 'x' ? 0 : 1];
+          valEl.textContent = fmtVal(evalExpr(input.value));
+          draw();
+          updateCode();
+        });
+      }
+    }
+
+    function exprOrNum(expr) {
+      // If the expression is just a number, keep as is. Otherwise return the expression.
+      const trimmed = expr.trim();
+      if (/^-?\d+(\.\d+)?$/.test(trimmed)) return trimmed;
+      return expr;
+    }
+
+    function fmtVal(v) {
+      return Number.isFinite(v) ? Math.round(v) : '—';
+    }
+
+    function curveCode(c) {
+      return `Bezier {
+    .x0 = ${exprOrNum(c.p0.xExpr)}, .y0 = ${exprOrNum(c.p0.yExpr)},
+    .x1 = ${exprOrNum(c.p1.xExpr)}, .y1 = ${exprOrNum(c.p1.yExpr)},
+    .x2 = ${exprOrNum(c.p2.xExpr)}, .y2 = ${exprOrNum(c.p2.yExpr)},
+    .x3 = ${exprOrNum(c.p3.xExpr)}, .y3 = ${exprOrNum(c.p3.yExpr)},
+} /* ${c.name} */`;
+    }
+
+    function updateCode() {
+      const active = getActive();
+      const constDecls = constants.filter(c => c.name).map(c => `const i32 ${c.name} = ${c.expr};`).join('\n');
+      const allCode = curves.map(curveCode).join(',\n\n');
+      codeOut.value = `${constDecls ? '// Constants\n' + constDecls + '\n\n' : ''}// All curves (${curves.length})\n` + allCode + `\n\n// Active curve only\n` + curveCode(active);
+    }
+
+    function updateCurveList() {
+      curveList.innerHTML = '';
+      for (const c of curves) {
+        const item = document.createElement('div');
+        item.className = 'curve-item' + (c.id === activeId ? ' selected' : '');
+        item.innerHTML = `
+          <div class="curve-color" style="background:${c.color}"></div>
+          <div class="curve-name">${c.name}</div>
+          <div class="curve-actions">
+            <button data-action="edit" data-id="${c.id}">✎</button>
+            <button data-action="delete" data-id="${c.id}" class="danger">×</button>
+          </div>
+        `;
+        item.addEventListener('click', (e) => {
+          if (e.target.closest('button')) return;
+          activeId = c.id;
+          updateUI();
+        });
+        curveList.appendChild(item);
+      }
+
+      for (const btn of curveList.querySelectorAll('button')) {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.id;
+          if (btn.dataset.action === 'delete') {
+            if (curves.length === 1) return;
+            curves = curves.filter(c => c.id !== id);
+            if (activeId === id) activeId = curves[0].id;
+          } else {
+            const c = curves.find(x => x.id === id);
+            const name = prompt('Curve name:', c.name);
+            if (name) c.name = name;
+          }
+          updateUI();
+        });
+      }
+    }
+
+    function updateUI() {
+      renderConstants();
+      updateCurveList();
+      updateInputs();
+      updateCode();
+      draw();
+    }
+
+    function getMousePos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: (clientX - rect.left) * (canvas.width / rect.width),
+        y: (clientY - rect.top) * (canvas.height / rect.height)
+      };
+    }
+
+    function findPoint(pos) {
+      const order = [getActive(), ...curves.filter(c => c.id !== activeId)];
+      for (const c of order) {
+        const pts = [getPoint(c.p0), getPoint(c.p1), getPoint(c.p2), getPoint(c.p3)];
+        for (let i = 0; i < 4; i++) {
+          const p = pts[i];
+          const dx = pos.x - p.x;
+          const dy = pos.y - p.y;
+          if (dx * dx + dy * dy <= HIT_RADIUS * HIT_RADIUS) {
+            return { curveId: c.id, point: ['p0', 'p1', 'p2', 'p3'][i] };
+          }
+        }
+      }
+      return null;
+    }
+
+    canvas.addEventListener('mousedown', startDrag);
+    canvas.addEventListener('touchstart', startDrag, { passive: false });
+
+    function startDrag(e) {
+      e.preventDefault();
+      const pos = getMousePos(e);
+      const hit = findPoint(pos);
+      if (hit) {
+        dragging = hit;
+        activeId = hit.curveId;
+        updateCurveList();
+        updateInputs();
+      }
+    }
+
+    window.addEventListener('mousemove', onDrag);
+    window.addEventListener('touchmove', onDrag, { passive: false });
+
+    function onDrag(e) {
+      if (!dragging) return;
+      e.preventDefault();
+      const pos = getMousePos(e);
+      const c = curves.find(x => x.id === dragging.curveId);
+      const x = Math.max(0, Math.min(canvas.width, snap(pos.x)));
+      const y = Math.max(0, Math.min(canvas.height, snap(pos.y)));
+      c[dragging.point].xExpr = String(Math.round(x));
+      c[dragging.point].yExpr = String(Math.round(y));
+      updateInputs();
+      updateCode();
+      draw();
+    }
+
+    window.addEventListener('mouseup', () => dragging = null);
+    window.addEventListener('touchend', () => dragging = null);
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (dragging) return;
+      canvas.style.cursor = findPoint(getMousePos(e)) ? 'grab' : 'crosshair';
+    });
+
+    // Canvas controls
+    canvasSize.addEventListener('change', () => {
+      const [w, h] = canvasSize.value.split('x').map(Number);
+      canvas.width = w;
+      canvas.height = h;
+      draw();
+    });
+
+    [showGrid, snapGrid, gridSize, lcdMode].forEach(el => {
+      el.addEventListener('input', () => {
+        gridSizeVal.textContent = gridSize.value;
+        draw();
+      });
+    });
+
+    document.getElementById('addConstant').addEventListener('click', () => {
+      constants.push({ name: '', expr: '0' });
+      renderConstants();
+    });
+
+    document.getElementById('addCurve').addEventListener('click', () => {
+      const c = defaultCurve();
+      c.id = nextId();
+      c.name = `Curve ${curves.length + 1}`;
+      c.color = colors[curves.length % colors.length];
+      // offset slightly so it's visible
+      c.p0.xExpr += ' + 20'; c.p1.xExpr += ' + 20'; c.p2.xExpr += ' + 20'; c.p3.xExpr += ' + 20';
+      c.p0.yExpr += ' + 20'; c.p1.yExpr += ' + 20'; c.p2.yExpr += ' + 20'; c.p3.yExpr += ' + 20';
+      curves.push(c);
+      activeId = c.id;
+      updateUI();
+    });
+
+    document.getElementById('clearCurves').addEventListener('click', () => {
+      if (!confirm('Delete all curves?')) return;
+      curves = [defaultCurve()];
+      curves[0].name = 'Curve 1';
+      activeId = curves[0].id;
+      updateUI();
+    });
+
+    const K = 0.488; // SQUARE_CORNER_CIRCLE
+    const S = 0.25;  // STRAIGHT_SEGMENT
+
+    function radius() {
+      const r = evalExpr('RADIUS');
+      return Number.isFinite(r) && r > 0 ? r : 80;
+    }
+
+    const presets = {
+      'line-h': () => {
+        const r = radius(), w = evalExpr('WIDTH') || 400;
+        return { p0: makePoint('EYE_X', 'EYE_Y'), p1: makePoint('EYE_X + RADIUS', `EYE_Y - ${Math.round(S * r)}`), p2: makePoint(`EYE_X + WIDTH - RADIUS`, `EYE_Y - ${Math.round(S * r)}`), p3: makePoint('EYE_X + WIDTH', 'EYE_Y') };
+      },
+      'line-v': () => {
+        const r = radius(), h = evalExpr('HEIGHT') || 300;
+        return { p0: makePoint('EYE_X', 'EYE_Y'), p1: makePoint(`EYE_X + ${Math.round(S * r)}`, 'EYE_Y + RADIUS'), p2: makePoint(`EYE_X + ${Math.round(S * r)}`, 'EYE_Y + HEIGHT - RADIUS'), p3: makePoint('EYE_X', 'EYE_Y + HEIGHT') };
+      },
+      'corner-tl': () => {
+        const r = radius();
+        return { p0: makePoint('EYE_X', 'EYE_Y + RADIUS'), p1: makePoint('EYE_X', `EYE_Y + ${Math.round(K * r)}`), p2: makePoint(`EYE_X + ${Math.round(K * r)}`, 'EYE_Y'), p3: makePoint('EYE_X + RADIUS', 'EYE_Y') };
+      },
+      'corner-tr': () => {
+        const r = radius();
+        return { p0: makePoint('EYE_X', 'EYE_Y'), p1: makePoint(`EYE_X + ${Math.round(K * r)}`, 'EYE_Y'), p2: makePoint('EYE_X + RADIUS', `EYE_Y + ${Math.round(K * r)}`), p3: makePoint('EYE_X + RADIUS', 'EYE_Y + RADIUS') };
+      },
+      'corner-bl': () => {
+        const r = radius();
+        return { p0: makePoint('EYE_X + RADIUS', 'EYE_Y + RADIUS'), p1: makePoint(`EYE_X + ${Math.round(K * r)}`, 'EYE_Y + RADIUS'), p2: makePoint('EYE_X', `EYE_Y + ${Math.round(K * r)}`), p3: makePoint('EYE_X', 'EYE_Y') };
+      },
+      'corner-br': () => {
+        const r = radius();
+        return { p0: makePoint('EYE_X + RADIUS', 'EYE_Y'), p1: makePoint('EYE_X + RADIUS', `EYE_Y + ${Math.round(K * r)}`), p2: makePoint(`EYE_X + ${Math.round(K * r)}`, 'EYE_Y + RADIUS'), p3: makePoint('EYE_X', 'EYE_Y + RADIUS') };
+      }
+    };
+
+    for (const btn of document.querySelectorAll('[data-preset]')) {
+      btn.addEventListener('click', () => {
+        const c = getActive();
+        const pts = presets[btn.dataset.preset]();
+        Object.assign(c, pts);
+        updateUI();
+      });
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 1400);
+    }
+
+    document.getElementById('copyCode').addEventListener('click', () => {
+      codeOut.select();
+      document.execCommand('copy');
+      showToast('Copied all curves!');
+    });
+
+    document.getElementById('copyOnlyActive').addEventListener('click', () => {
+      const active = getActive();
+      const code = curveCode(active);
+      navigator.clipboard.writeText(code).catch(() => {
+        codeOut.value = code;
+        codeOut.select();
+        document.execCommand('copy');
+      }).then(() => showToast('Copied active curve!'));
+    });
+
+    updateUI();
+  </script>
+</body>
+</html>
