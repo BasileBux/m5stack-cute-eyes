@@ -5,14 +5,10 @@
 
 M5GFX display;	// 320x240px, ~70Hz
 
+#include "constants.h"
+#include "double_buffer.h"
 #include "eyes.h"
 #include "types.h"
-
-const auto BACKGROUND_COLOR = TFT_BLACK;
-const auto FOREGROUND_COLOR = TFT_WHITE;
-
-#define FPS 60
-const u32 frame_delay = 1000 / FPS;
 
 void setup() {
 	Serial.begin(115200);
@@ -29,13 +25,15 @@ void setup() {
 		display.setRotation(display.getRotation() ^ 1);
 	}
 
-	display.startWrite();
 	display.fillScreen(BACKGROUND_COLOR);
 	display.endWrite();
 }
 
-// Function is called FPS times per second
-void frame(m5gfx::M5Canvas &canvas, unsigned long tick_count, Face &face) {
+// Called every frame, owns the SPI bus due to DMA so don't draw anything else without calling `waitDMA` first.
+void frame(DoubleBuffer &double_buff, unsigned long tick_count, Face &face) {
+	display.pushImageDMA(0, 0, double_buff.width, double_buff.height,
+						 (uint16_t *)double_buff.get_display_buffer().getBuffer());
+
 	if (face.ticks_before_blink == 0) {
 		face.ticks_before_blink = esp_random() % BlinkAnimation::MAX_WAIT_TICKS;
 		face.state.transition_to(State::BLINKING);
@@ -43,11 +41,13 @@ void frame(m5gfx::M5Canvas &canvas, unsigned long tick_count, Face &face) {
 		face.ticks_before_blink--;
 	}
 
-	canvas.fillSprite(BACKGROUND_COLOR);
-	// NOTE: the draw function is really heavy because of `floodFill` which is super
-	// slow. The smaller the eyes, the better the performance.
-	face.draw(canvas, tick_count);
-	canvas.pushSprite(0, 0);
+	double_buff.get_draw_buffer().fillSprite(BACKGROUND_COLOR);
+	face.draw(double_buff.get_draw_buffer(), tick_count);
+}
+
+// Called on every frame but doesn't own the SPI bus
+void hud(M5GFX &display) {
+	// Do not use canvas or DMA here as it would likely be too slow and cause the FPS to drop.
 }
 
 void exec(Face &face) {
@@ -69,18 +69,11 @@ bool loop_init = false;
 
 void loop() {
 	M5.update();
-	static m5gfx::M5Canvas canvas(&display);
 
-	if (!loop_init) {
-		canvas.setColorDepth(8);
-		// Adjust size relative to what we want to dinamically draw on the display
-		// Reducing this is a big improvement in memory usage
-		// canvas.createSprite(display.width(), display.height());
-		canvas.createSprite(MAX_EYE_WIDTH * 2 + NormalEye::EYE_DISTANCE + NormalEye::EYE_RADIUS,
-							MAX_EYE_HEIGHT + NormalEye::EYE_RADIUS);
-		loop_init = true;
-	}
-	static Face face(canvas, FOREGROUND_COLOR, NormalEye::EYE_RADIUS);
+	static DoubleBuffer double_buf(
+		display, MAX_EYE_WIDTH * 2 + NormalEye::EYE_DISTANCE + NormalEye::EYE_RADIUS,
+		MAX_EYE_HEIGHT + NormalEye::EYE_RADIUS);
+	static Face face(double_buf.get_draw_buffer(), FOREGROUND_COLOR, NormalEye::EYE_RADIUS);
 
 	exec(face);
 
@@ -90,8 +83,17 @@ void loop() {
 		Serial.printf("FPS: %f\n", 1000.0 / (elapsed_time - time_reset));
 		time_reset = elapsed_time;
 		tick_count++;
+
 		display.startWrite();
-		frame(canvas, tick_count, face);
+
+		frame(double_buf, tick_count, face);
+
+		display.waitDMA();
+
+		hud(display);
+
 		display.endWrite();
+
+		double_buf.swap();
 	}
 }

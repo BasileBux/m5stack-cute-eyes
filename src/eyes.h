@@ -9,10 +9,12 @@ struct Size {
 };
 
 namespace NormalEye {
-	// const u32 EYE_WIDTH = 66;
-	// const u32 EYE_HEIGHT = 95;
-	const u32 EYE_WIDTH = 56;
-	const u32 EYE_HEIGHT = 85;
+	const u32 EYE_WIDTH = 66;
+	const u32 EYE_HEIGHT = 95;
+
+	// const u32 EYE_WIDTH = 56;
+	// const u32 EYE_HEIGHT = 85;
+
 	const Size EYE_SIZE = { EYE_WIDTH, EYE_HEIGHT };
 	const u32 EYE_RADIUS = 12;
 	const u32 EYE_DISTANCE = 30;
@@ -43,7 +45,7 @@ namespace IdleAnimation {
 }  // namespace IdleAnimation
 
 namespace BlinkAnimation {
-	const u32 MAX_WAIT_TICKS = 600;
+	const u32 MAX_WAIT_TICKS = 900;
 	const u32 DURATION = 20;  // ticks
 	const float ANGLE = 1.f / (float)DURATION;
 }  // namespace BlinkAnimation
