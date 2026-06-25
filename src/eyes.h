@@ -46,6 +46,7 @@ namespace IdleAnimation {
 
 namespace BlinkAnimation {
 	const u32 MAX_WAIT_TICKS = 900;
+	const i32 MIN_ANGLE = 2;
 	const u32 DURATION = 20;  // ticks
 	const float ANGLE = 1.f / (float)DURATION;
 }  // namespace BlinkAnimation

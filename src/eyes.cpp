@@ -207,9 +207,11 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 				if (t < 0.2f) {
 					angle = AngrySadEye::ANGLE;
 				} else if (t <= 0.4f) {
-					angle = (i32)(AngrySadEye::ANGLE * (1.0f - (t - 0.2f) / 0.2f));
+					angle = std::max(BlinkAnimation::MIN_ANGLE,
+									 (i32)(AngrySadEye::ANGLE * (1.0f - (t - 0.2f) / 0.2f)));
 				} else if (t <= 0.8f) {
-					angle = (i32)(AngrySadEye::ANGLE * ((t - 0.4f) / 0.4f));
+					angle = std::max(BlinkAnimation::MIN_ANGLE,
+									 (i32)(AngrySadEye::ANGLE * ((t - 0.4f) / 0.4f)));
 				} else {
 					angle = AngrySadEye::ANGLE;
 				}
