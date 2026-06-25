@@ -36,19 +36,21 @@ void setup() {
 
 // Function is called FPS times per second
 void frame(m5gfx::M5Canvas &canvas, unsigned long tick_count, Face &face) {
+	if (face.ticks_before_blink == 0) {
+		face.ticks_before_blink = esp_random() % BlinkAnimation::MAX_WAIT_TICKS;
+		face.state.transition_to(State::BLINKING);
+	} else {
+		face.ticks_before_blink--;
+	}
+
+	canvas.fillSprite(BACKGROUND_COLOR);
+	// NOTE: the draw function is really heavy because of `floodFill` which is super
+	// slow. The smaller the eyes, the better the performance.
 	face.draw(canvas, tick_count);
 	canvas.pushSprite(0, 0);
 }
 
 void exec(Face &face) {
-	// DEBUG: removed the blinking transition for now
-	if (face.ticks_before_blink == 0) {
-		face.ticks_before_blink = esp_random() % BlinkAnimation::MAX_WAIT_TICKS;
-		// face.state.transition_to(State::BLINKING);
-	} else {
-		face.ticks_before_blink--;
-	}
-
 	if (M5.BtnA.wasPressed()) {
 		face.set_expression(FaceExpression::NORMAL);
 	} else if (M5.BtnB.wasPressed()) {
@@ -73,7 +75,9 @@ void loop() {
 		canvas.setColorDepth(8);
 		// Adjust size relative to what we want to dinamically draw on the display
 		// Reducing this is a big improvement in memory usage
-		canvas.createSprite(display.width(), display.height());
+		// canvas.createSprite(display.width(), display.height());
+		canvas.createSprite(MAX_EYE_WIDTH * 2 + NormalEye::EYE_DISTANCE + NormalEye::EYE_RADIUS,
+							MAX_EYE_HEIGHT + NormalEye::EYE_RADIUS);
 		loop_init = true;
 	}
 	static Face face(canvas, FOREGROUND_COLOR, NormalEye::EYE_RADIUS);
@@ -83,6 +87,7 @@ void loop() {
 	display.waitDisplay();
 	elapsed_time = millis();
 	if (elapsed_time - time_reset >= frame_delay) {
+		Serial.printf("FPS: %f\n", 1000.0 / (elapsed_time - time_reset));
 		time_reset = elapsed_time;
 		tick_count++;
 		display.startWrite();

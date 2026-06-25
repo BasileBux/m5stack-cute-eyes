@@ -12,17 +12,7 @@ Eye::Eye(i32 pos_x, i32 pos_y, i32 width, i32 height)
 	, height(height) {
 }
 
-void Eye::clear(m5gfx::M5Canvas &canvas, float radius) const {
-	i32 width_d = MAX_EYE_WIDTH - this->width;
-	i32 height_d = MAX_EYE_HEIGHT - this->height;
-	canvas.fillRect(this->pos_x - width_d / 2 - (i32)radius * 2,
-					this->pos_y - height_d / 2 - (i32)radius * 2, MAX_EYE_WIDTH + (i32)radius * 4,
-					MAX_EYE_HEIGHT + (i32)radius * 4, TFT_BLACK);
-}
-
 void Eye::draw_normal(m5gfx::M5Canvas &canvas, float radius, u16 color) const {
-	this->clear(canvas, radius);
-
 	auto current =
 		Bezier::squared_top_left(radius).move_to(this->pos_x, this->pos_y).draw(canvas, TFT_WHITE);
 
@@ -62,8 +52,6 @@ void Eye::draw_normal(m5gfx::M5Canvas &canvas, float radius, u16 color) const {
 
 void Eye::draw_down(m5gfx::M5Canvas &canvas, float radius, u16 color, i32 angle) const {
 	const i32 diagonal = angle * 2 * 2;
-	this->clear(canvas, radius);
-
 	auto current =
 		Bezier::acute_top_left(radius, angle).move_to(pos_x, pos_y).draw(canvas, TFT_WHITE);
 
@@ -104,8 +92,6 @@ void Eye::draw_down(m5gfx::M5Canvas &canvas, float radius, u16 color, i32 angle)
 
 void Eye::draw_up(m5gfx::M5Canvas &canvas, float radius, u16 color, i32 angle) const {
 	const i32 diagonal = angle * 2 * 2;
-	this->clear(canvas, radius);
-
 	auto current = Bezier::obtuse_top_left(radius, angle)
 					   .move_to(pos_x, pos_y + diagonal)
 					   .draw(canvas, TFT_WHITE);
@@ -169,7 +155,7 @@ Face::Face(m5gfx::M5Canvas &canvas, u16 color, float radius) {
 	this->left_pos_x = width / 2 - NormalEye::EYE_WIDTH - NormalEye::EYE_DISTANCE / 2;
 	this->right_pos_x = this->left_pos_x + NormalEye::EYE_WIDTH + NormalEye::EYE_DISTANCE;
 
-	this->left_pos_y = height / 2 - NormalEye::EYE_HEIGHT / 2 - NormalEye::Y_OFFSET;
+	this->left_pos_y = height / 2 - NormalEye::EYE_HEIGHT / 2;
 	this->right_pos_y = this->left_pos_y;
 }
 
@@ -198,8 +184,9 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 	i32 current_width = eye_size.width + w_offset;
 	i32 current_height = eye_size.height + h_offset;
 
-	// TODO: blinking in expressions other than NORMAL should transition to NORMAL while blinking
+	i32 angle = AngrySadEye::ANGLE;
 	i32 blink_offset = 0;
+
 	if (this->state == State::BLINKING) {
 		// reduce the height to simulate blinking
 		this->state.transition_ticks++;
@@ -207,20 +194,29 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 		if (this->state.transition_ticks > BlinkAnimation::DURATION) {
 			this->state.transition_to(State::IDLE);
 		} else {
-			i32 blink_size =
-				(i32)(blink_function((float)this->state.transition_ticks * BlinkAnimation::ANGLE) *
-					  (float)current_height);
-			i32 min_blink_size = (i32)(NormalEye::EYE_RADIUS * 2 +
-									   (this->expression == ANGRY || this->expression == SAD
-											? AngrySadEye::ANGLE * 2 * 2
-											: 0));
+			float t = (float)this->state.transition_ticks * BlinkAnimation::ANGLE;
+			i32 blink_size = (i32)(blink_function(t) * (float)current_height);
+			i32 min_blink_size = (i32)(NormalEye::EYE_RADIUS * 2);
 			blink_size = std::max(blink_size, min_blink_size);
 			blink_offset = current_height - blink_size;
 			current_height = blink_size;
+
+			// While blinking in an angled expression, transition to NORMAL while closing
+			// and back to the original expression while opening.
+			if (this->expression == ANGRY || this->expression == SAD) {
+				if (t < 0.2f) {
+					angle = AngrySadEye::ANGLE;
+				} else if (t <= 0.4f) {
+					angle = (i32)(AngrySadEye::ANGLE * (1.0f - (t - 0.2f) / 0.2f));
+				} else if (t <= 0.8f) {
+					angle = (i32)(AngrySadEye::ANGLE * ((t - 0.4f) / 0.4f));
+				} else {
+					angle = AngrySadEye::ANGLE;
+				}
+			}
 		}
 	}
 
-	i32 angle = AngrySadEye::ANGLE;
 	if (this->state == State::NORMAL_TO_ANGLED) {
 		this->state.transition_ticks++;
 		if (this->state.transition_ticks > TransitionAnimation::DURATION) {
@@ -252,16 +248,26 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 		right_eye.draw_normal(canvas, this->radius, this->color);
 		break;
 	case ANGRY:
-		left_eye.draw_down(canvas, this->radius, this->color, angle);
-		right_eye.draw_up(canvas, this->radius, this->color, angle);
+		if (angle == 0) {
+			left_eye.draw_normal(canvas, this->radius, this->color);
+			right_eye.draw_normal(canvas, this->radius, this->color);
+		} else {
+			left_eye.draw_down(canvas, this->radius, this->color, angle);
+			right_eye.draw_up(canvas, this->radius, this->color, angle);
+		}
 		break;
 	case WEIRDED:  // TODO: implement weirded expression
 		left_eye.draw_normal(canvas, this->radius, this->color);
 		right_eye.draw_normal(canvas, this->radius, this->color);
 		break;
 	case SAD:
-		left_eye.draw_up(canvas, this->radius, this->color, angle);
-		right_eye.draw_down(canvas, this->radius, this->color, angle);
+		if (angle == 0) {
+			left_eye.draw_normal(canvas, this->radius, this->color);
+			right_eye.draw_normal(canvas, this->radius, this->color);
+		} else {
+			left_eye.draw_up(canvas, this->radius, this->color, angle);
+			right_eye.draw_down(canvas, this->radius, this->color, angle);
+		}
 		break;
 	default:
 		left_eye.draw_normal(canvas, this->radius, this->color);
@@ -272,22 +278,21 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 
 void Face::set_expression(FaceExpression new_expression) {
 	switch (new_expression) {
-		case NORMAL:
-			if (this->expression == ANGRY || this->expression == SAD) {
-				this->state.transition_to(State::ANGLED_TO_NORMAL);
-			}
-			return; // Return as we don't want to change the expression immediately, but rather after the transition
-		case ANGRY:
-		case SAD:
-			if (this->expression == NORMAL) {
-				this->state.transition_to(State::NORMAL_TO_ANGLED);
-			}
-			break;
-		case WEIRDED:
-			// No transition for WEIRDED, just set the expression
-			break;
-		default:
-			return; // Invalid expression, do nothing
+	case NORMAL:
+		if (this->expression == ANGRY || this->expression == SAD) {
+			this->state.transition_to(State::ANGLED_TO_NORMAL);
+		}
+		return;	 // Return as we don't want to change the expression immediately, but rather after the transition
+	case ANGRY:
+	case SAD:
+		if (this->expression == NORMAL) {
+			this->state.transition_to(State::NORMAL_TO_ANGLED);
+		}
+		break;
+	case WEIRDED:
+		// No transition for WEIRDED, just set the expression
+		break;
+	default: return;  // Invalid expression, do nothing
 	}
 	this->expression = new_expression;
 }

@@ -9,12 +9,13 @@ struct Size {
 };
 
 namespace NormalEye {
-	const u32 EYE_WIDTH = 66;
-	const u32 EYE_HEIGHT = 95;
+	// const u32 EYE_WIDTH = 66;
+	// const u32 EYE_HEIGHT = 95;
+	const u32 EYE_WIDTH = 56;
+	const u32 EYE_HEIGHT = 85;
 	const Size EYE_SIZE = { EYE_WIDTH, EYE_HEIGHT };
 	const u32 EYE_RADIUS = 12;
 	const u32 EYE_DISTANCE = 30;
-	const u32 Y_OFFSET = 30;
 }  // namespace NormalEye
 
 namespace AngrySadEye {
@@ -23,27 +24,27 @@ namespace AngrySadEye {
 }  // namespace AngrySadEye
 
 namespace TransitionAnimation {
-	const u32 DURATION = 4;  // ticks
+	const u32 DURATION = 8;	 // ticks
 	const float ANGLE = (float)AngrySadEye::ANGLE / (float)DURATION;
-}
+}  // namespace TransitionAnimation
 
 namespace IdleAnimation {
 	const u8 WIDTH_DELTA = 1;
-	const u32 WIDTH_DURATION = 30;	// ticks
+	const u32 WIDTH_DURATION = 90;	// ticks
 	const float WIDTH_ANGLE = 2.0f * M_PI / (float)WIDTH_DURATION;
 
 	const u8 HEIGHT_DELTA = 2;
-	const u32 HEIGHT_DURATION = 20;	 // ticks
+	const u32 HEIGHT_DURATION = 60;	 // ticks
 	const float HEIGHT_ANGLE = 2.0f * M_PI / (float)HEIGHT_DURATION;
 
 	const u8 Y_DELTA = 3;
-	const u32 Y_DURATION = 40;
+	const u32 Y_DURATION = 120;
 	const float Y_ANGLE = 2.0f * M_PI / (float)Y_DURATION;
 }  // namespace IdleAnimation
 
 namespace BlinkAnimation {
-	const u32 MAX_WAIT_TICKS = 300;
-	const u32 DURATION = 8;	 // ticks
+	const u32 MAX_WAIT_TICKS = 600;
+	const u32 DURATION = 20;  // ticks
 	const float ANGLE = 1.f / (float)DURATION;
 }  // namespace BlinkAnimation
 
@@ -62,7 +63,6 @@ struct Eye {
 				   i32 angle = AngrySadEye::ANGLE) const;
 	void draw_up(m5gfx::M5Canvas &canvas, float radius, u16 color,
 				 i32 angle = AngrySadEye::ANGLE) const;
-	void clear(m5gfx::M5Canvas &canvas, float radius) const;
 };
 
 void test_bezier(m5gfx::M5Canvas &canvas);
