@@ -169,6 +169,7 @@ float blink_function(float t) {
 	return ret;
 }
 
+// TODO: Fix the artifacts when blinking
 void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 	float w_angle = (float)tick_count * IdleAnimation::WIDTH_ANGLE;
 	float h_angle = (float)tick_count * IdleAnimation::HEIGHT_ANGLE;

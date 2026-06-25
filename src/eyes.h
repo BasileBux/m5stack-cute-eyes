@@ -10,10 +10,7 @@ struct Size {
 
 namespace NormalEye {
 	const u32 EYE_WIDTH = 66;
-	const u32 EYE_HEIGHT = 95;
-
-	// const u32 EYE_WIDTH = 56;
-	// const u32 EYE_HEIGHT = 85;
+	const u32 EYE_HEIGHT = 86;
 
 	const Size EYE_SIZE = { EYE_WIDTH, EYE_HEIGHT };
 	const u32 EYE_RADIUS = 12;

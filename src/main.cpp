@@ -31,8 +31,7 @@ void setup() {
 
 // Called every frame, owns the SPI bus due to DMA so don't draw anything else without calling `waitDMA` first.
 void frame(DoubleBuffer &double_buff, unsigned long tick_count, Face &face) {
-	display.pushImageDMA(0, 0, double_buff.width, double_buff.height,
-						 (uint16_t *)double_buff.get_display_buffer().getBuffer());
+	double_buff.draw_to_display(display);
 
 	if (face.ticks_before_blink == 0) {
 		face.ticks_before_blink = esp_random() % BlinkAnimation::MAX_WAIT_TICKS;
