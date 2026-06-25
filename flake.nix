@@ -9,7 +9,7 @@
       pkgs = nixpkgs.legacyPackages.${system};
     in {
       devShells.${system}.default = pkgs.mkShell {
-        packages = with pkgs; [ arduino arduino-cli arduino-ide ];
+        packages = with pkgs; [ platformio-core ];
         shellHook = "exec zsh";
       };
     };
