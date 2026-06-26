@@ -5,6 +5,15 @@
 #include "bezier.h"
 #include "esp_random.h"
 
+static Bezier draw_edge(Bezier bezier, m5gfx::M5Canvas &canvas, u16 color, bool blinking) {
+	if (blinking) {
+		canvas.drawLine(bezier.x0, bezier.y0, bezier.x3, bezier.y3, color);
+	} else {
+		bezier.draw(canvas, color);
+	}
+	return bezier;
+}
+
 Eye::Eye(i32 pos_x, i32 pos_y, i32 width, i32 height)
 	: pos_x(pos_x)
 	, pos_y(pos_y)
@@ -12,123 +21,120 @@ Eye::Eye(i32 pos_x, i32 pos_y, i32 width, i32 height)
 	, height(height) {
 }
 
-void Eye::draw_normal(m5gfx::M5Canvas &canvas, float radius, u16 color) const {
+void Eye::draw_normal(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinking) const {
 	auto current =
-		Bezier::squared_top_left(radius).move_to(this->pos_x, this->pos_y).draw(canvas, TFT_WHITE);
+		Bezier::squared_top_left(radius).move_to(this->pos_x, this->pos_y).draw(canvas, color);
 
-	current = Bezier::horizontal(radius, this->width - (2 * radius), true)
-				  .move_to(current.x3, current.y3)
-				  .draw(canvas, TFT_WHITE);
+	current = draw_edge(Bezier::horizontal(radius, this->width - (2 * radius), true)
+							.move_to(current.x3, current.y3),
+						canvas, color, blinking);
 
-	current =
-		Bezier::squared_top_right(radius).move_to(current.x3, current.y3).draw(canvas, TFT_WHITE);
+	current = Bezier::squared_top_right(radius).move_to(current.x3, current.y3).draw(canvas, color);
 
-	current = Bezier::vertical(radius, this->height - (2 * radius), true)
-				  .move_to(current.x3, current.y3)
-				  .draw(canvas, TFT_WHITE);
+	current = draw_edge(
+		Bezier::vertical(radius, this->height - (2 * radius), true).move_to(current.x3, current.y3),
+		canvas, color, blinking);
 
 	current = Bezier::squared_bottom_right(radius)
 				  // slight offset as ref point is top left corner of the bounding box of the curve
 				  .move_to(current.x3 - radius, current.y3)
-				  .draw(canvas, TFT_WHITE);
+				  .draw(canvas, color);
 
-	current = Bezier::horizontal(radius, this->width - (2 * radius), false)
-				  // horizontal is left to right, so we need to inverse the x position
-				  .move_to(current.x3 - (this->width - 2 * radius), current.y3)
-				  .draw(canvas, TFT_WHITE);
+	current = draw_edge(Bezier::horizontal(radius, this->width - (2 * radius), false)
+							// horizontal is left to right, so we need to inverse the x position
+							.move_to(current.x3 - (this->width - 2 * radius), current.y3),
+						canvas, color, blinking);
 
 	current = Bezier::squared_bottom_left(radius)
 				  .move_to(current.x0 - radius,
 						   current.y0 - radius)	 // horizontal is left to right
-				  .draw(canvas, TFT_WHITE);
+				  .draw(canvas, color);
 
-	current = Bezier::vertical(radius, this->height - (2 * radius), false)
-				  // vertical is top to bottom, so we need to inverse the y position
-				  .move_to(current.x3, current.y3 - (this->height - 2 * radius))
-				  .draw(canvas, TFT_WHITE);
+	current = draw_edge(Bezier::vertical(radius, this->height - (2 * radius), false)
+							// vertical is top to bottom, so we need to inverse the y position
+							.move_to(current.x3, current.y3 - (this->height - 2 * radius)),
+						canvas, color, blinking);
 
-	canvas.floodFill(this->pos_x + this->width / 2, this->pos_y + this->height / 2, TFT_WHITE);
+	canvas.floodFill(this->pos_x + this->width / 2, this->pos_y + this->height / 2, color);
 }
 
-void Eye::draw_down(m5gfx::M5Canvas &canvas, float radius, u16 color, i32 angle) const {
+void Eye::draw_down(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinking,
+					i32 angle) const {
 	const i32 diagonal = angle * 2 * 2;
-	auto current =
-		Bezier::acute_top_left(radius, angle).move_to(pos_x, pos_y).draw(canvas, TFT_WHITE);
+	auto current = Bezier::acute_top_left(radius, angle).move_to(pos_x, pos_y).draw(canvas, color);
 
 	current = Bezier::diagonal(width - (2 * radius), diagonal)
 				  .move_to(current.x3, current.y3)
-				  .draw(canvas, TFT_WHITE);
+				  .draw(canvas, color);
 
-	current = Bezier::obtuse_top_right(radius, angle)
-				  .move_to(current.x3, current.y3)
-				  .draw(canvas, TFT_WHITE);
+	current =
+		Bezier::obtuse_top_right(radius, angle).move_to(current.x3, current.y3).draw(canvas, color);
 
-	current = Bezier::vertical(radius, height - (2 * radius) - diagonal, true)
-				  .move_to(current.x3, current.y3)
-				  .draw(canvas, TFT_WHITE);
+	current = draw_edge(Bezier::vertical(radius, height - (2 * radius) - diagonal, true)
+							.move_to(current.x3, current.y3),
+						canvas, color, blinking);
 
 	current = Bezier::squared_bottom_right(radius)
 				  // slight offset as ref point is top left corner of the bounding box of the curve
 				  .move_to(current.x3 - radius, current.y3)
-				  .draw(canvas, TFT_WHITE);
+				  .draw(canvas, color);
 
-	current = Bezier::horizontal(radius, width - (2 * radius), false)
-				  // horizontal is left to right, so we need to inverse the x position
-				  .move_to(current.x3 - (width - 2 * radius), current.y3)
-				  .draw(canvas, TFT_WHITE);
+	current = draw_edge(Bezier::horizontal(radius, width - (2 * radius), false)
+							// horizontal is left to right, so we need to inverse the x position
+							.move_to(current.x3 - (width - 2 * radius), current.y3),
+						canvas, color, blinking);
 
 	current = Bezier::squared_bottom_left(radius)
 				  .move_to(current.x0 - radius,
 						   current.y0 - radius)	 // horizontal is left to right
-				  .draw(canvas, TFT_WHITE);
+				  .draw(canvas, color);
 
-	current = Bezier::vertical(radius, height - (2 * radius), false)
-				  // vertical is top to bottom, so we need to inverse the y position
-				  .move_to(current.x3, current.y3 - (height - 2 * radius))
-				  .draw(canvas, TFT_WHITE);
+	current = draw_edge(Bezier::vertical(radius, height - (2 * radius), false)
+							// vertical is top to bottom, so we need to inverse the y position
+							.move_to(current.x3, current.y3 - (height - 2 * radius)),
+						canvas, color, blinking);
 
-	canvas.floodFill(pos_x + width / 2, pos_y + height / 2, TFT_WHITE);
+	canvas.floodFill(pos_x + width / 2, pos_y + height / 2, color);
 }
 
-void Eye::draw_up(m5gfx::M5Canvas &canvas, float radius, u16 color, i32 angle) const {
+void Eye::draw_up(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinking,
+				  i32 angle) const {
 	const i32 diagonal = angle * 2 * 2;
-	auto current = Bezier::obtuse_top_left(radius, angle)
-					   .move_to(pos_x, pos_y + diagonal)
-					   .draw(canvas, TFT_WHITE);
+	auto current =
+		Bezier::obtuse_top_left(radius, angle).move_to(pos_x, pos_y + diagonal).draw(canvas, color);
 
 	current = Bezier::diagonal(width - (2 * radius), -diagonal)
 				  .move_to(current.x3, current.y3)
-				  .draw(canvas, TFT_WHITE);
+				  .draw(canvas, color);
 
-	current = Bezier::acute_top_right(radius, angle)
-				  .move_to(current.x3, current.y3)
-				  .draw(canvas, TFT_WHITE);
+	current =
+		Bezier::acute_top_right(radius, angle).move_to(current.x3, current.y3).draw(canvas, color);
 
-	current = Bezier::vertical(radius, height - (2 * radius), true)
-				  .move_to(current.x3, current.y3)
-				  .draw(canvas, TFT_WHITE);
+	current = draw_edge(
+		Bezier::vertical(radius, height - (2 * radius), true).move_to(current.x3, current.y3),
+		canvas, color, blinking);
 
 	current = Bezier::squared_bottom_right(radius)
 				  // slight offset as ref point is top left corner of the bounding box of the curve
 				  .move_to(current.x3 - radius, current.y3)
-				  .draw(canvas, TFT_WHITE);
+				  .draw(canvas, color);
 
-	current = Bezier::horizontal(radius, width - (2 * radius), false)
-				  // horizontal is left to right, so we need to inverse the x position
-				  .move_to(current.x3 - (width - 2 * radius), current.y3)
-				  .draw(canvas, TFT_WHITE);
+	current = draw_edge(Bezier::horizontal(radius, width - (2 * radius), false)
+							// horizontal is left to right, so we need to inverse the x position
+							.move_to(current.x3 - (width - 2 * radius), current.y3),
+						canvas, color, blinking);
 
 	current = Bezier::squared_bottom_left(radius)
 				  .move_to(current.x0 - radius,
 						   current.y0 - radius)	 // horizontal is left to right
-				  .draw(canvas, TFT_WHITE);
+				  .draw(canvas, color);
 
-	current = Bezier::vertical(radius, height - (2 * radius) - diagonal, false)
-				  // vertical is top to bottom, so we need to inverse the y position
-				  .move_to(current.x3, current.y3 - (height - 2 * radius) + diagonal)
-				  .draw(canvas, TFT_WHITE);
+	current = draw_edge(Bezier::vertical(radius, height - (2 * radius) - diagonal, false)
+							// vertical is top to bottom, so we need to inverse the y position
+							.move_to(current.x3, current.y3 - (height - 2 * radius) + diagonal),
+						canvas, color, blinking);
 
-	canvas.floodFill(pos_x + width / 2, pos_y + height / 2, TFT_WHITE);
+	canvas.floodFill(pos_x + width / 2, pos_y + height / 2, color);
 }
 
 Size Face::get_params() const {
@@ -169,7 +175,6 @@ float blink_function(float t) {
 	return ret;
 }
 
-// TODO: Fix the artifacts when blinking
 void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 	float w_angle = (float)tick_count * IdleAnimation::WIDTH_ANGLE;
 	float h_angle = (float)tick_count * IdleAnimation::HEIGHT_ANGLE;
@@ -245,36 +250,40 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 	Eye left_eye(left_x, pos_y, current_width, current_height);
 	Eye right_eye(right_x, pos_y, current_width, current_height);
 
+
+	bool blinking = (this->state == State::BLINKING &&
+					 this->state.transition_ticks >= (float)BlinkAnimation::DURATION * 0.2f &&
+					 this->state.transition_ticks <= (float)BlinkAnimation::DURATION * 0.6f);
 	switch (this->expression) {
 	case NORMAL:
-		left_eye.draw_normal(canvas, this->radius, this->color);
-		right_eye.draw_normal(canvas, this->radius, this->color);
+		left_eye.draw_normal(canvas, this->radius, this->color, blinking);
+		right_eye.draw_normal(canvas, this->radius, this->color, blinking);
 		break;
 	case ANGRY:
 		if (angle == 0) {
-			left_eye.draw_normal(canvas, this->radius, this->color);
-			right_eye.draw_normal(canvas, this->radius, this->color);
+			left_eye.draw_normal(canvas, this->radius, this->color, blinking);
+			right_eye.draw_normal(canvas, this->radius, this->color, blinking);
 		} else {
-			left_eye.draw_down(canvas, this->radius, this->color, angle);
-			right_eye.draw_up(canvas, this->radius, this->color, angle);
+			left_eye.draw_down(canvas, this->radius, this->color, blinking, angle);
+			right_eye.draw_up(canvas, this->radius, this->color, blinking, angle);
 		}
-		break;
-	case WEIRDED:  // TODO: implement weirded expression
-		left_eye.draw_normal(canvas, this->radius, this->color);
-		right_eye.draw_normal(canvas, this->radius, this->color);
 		break;
 	case SAD:
 		if (angle == 0) {
-			left_eye.draw_normal(canvas, this->radius, this->color);
-			right_eye.draw_normal(canvas, this->radius, this->color);
+			left_eye.draw_normal(canvas, this->radius, this->color, blinking);
+			right_eye.draw_normal(canvas, this->radius, this->color, blinking);
 		} else {
-			left_eye.draw_up(canvas, this->radius, this->color, angle);
-			right_eye.draw_down(canvas, this->radius, this->color, angle);
+			left_eye.draw_up(canvas, this->radius, this->color, blinking, angle);
+			right_eye.draw_down(canvas, this->radius, this->color, blinking, angle);
 		}
 		break;
+	case WEIRDED:  // TODO: implement weirded expression
+		left_eye.draw_normal(canvas, this->radius, this->color, blinking);
+		right_eye.draw_normal(canvas, this->radius, this->color, blinking);
+		break;
 	default:
-		left_eye.draw_normal(canvas, this->radius, this->color);
-		right_eye.draw_normal(canvas, this->radius, this->color);
+		left_eye.draw_normal(canvas, this->radius, this->color, blinking);
+		right_eye.draw_normal(canvas, this->radius, this->color, blinking);
 		break;
 	}
 }

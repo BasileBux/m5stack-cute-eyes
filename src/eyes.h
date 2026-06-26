@@ -58,10 +58,10 @@ struct Eye {
 	i32 width, height;
 	Eye(i32 pos_x, i32 pos_y, i32 width, i32 height);
 
-	void draw_normal(m5gfx::M5Canvas &canvas, float radius, u16 color) const;
-	void draw_down(m5gfx::M5Canvas &canvas, float radius, u16 color,
+	void draw_normal(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinking) const;
+	void draw_down(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinking,
 				   i32 angle = AngrySadEye::ANGLE) const;
-	void draw_up(m5gfx::M5Canvas &canvas, float radius, u16 color,
+	void draw_up(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinking,
 				 i32 angle = AngrySadEye::ANGLE) const;
 };
 
