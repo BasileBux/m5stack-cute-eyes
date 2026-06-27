@@ -139,11 +139,11 @@ void Eye::draw_up(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinkin
 
 Size Face::get_params() const {
 	switch (this->expression) {
-	case NORMAL: return NormalEye::EYE_SIZE;
-	case ANGRY: return NormalEye::EYE_SIZE;
-	case SAD: return NormalEye::EYE_SIZE;	   // TODO:
-	case WEIRDED: return NormalEye::EYE_SIZE;  // TODO:
-	default: return NormalEye::EYE_SIZE;	   // TODO:
+	case NORMAL: return EyeGeometry::EYE_SIZE;
+	case ANGRY: return EyeGeometry::EYE_SIZE;
+	case SAD: return EyeGeometry::EYE_SIZE;	   // TODO:
+	case WEIRDED: return EyeGeometry::EYE_SIZE;  // TODO:
+	default: return EyeGeometry::EYE_SIZE;	   // TODO:
 	}
 }
 
@@ -158,10 +158,10 @@ Face::Face(m5gfx::M5Canvas &canvas, u16 color, float radius) {
 	i32 width = this->canvas.width();
 	i32 height = this->canvas.height();
 
-	this->left_pos_x = width / 2 - NormalEye::EYE_WIDTH - NormalEye::EYE_DISTANCE / 2;
-	this->right_pos_x = this->left_pos_x + NormalEye::EYE_WIDTH + NormalEye::EYE_DISTANCE;
+	this->left_pos_x = width / 2 - EyeGeometry::EYE_WIDTH - EyeGeometry::EYE_DISTANCE / 2;
+	this->right_pos_x = this->left_pos_x + EyeGeometry::EYE_WIDTH + EyeGeometry::EYE_DISTANCE;
 
-	this->left_pos_y = height / 2 - NormalEye::EYE_HEIGHT / 2;
+	this->left_pos_y = height / 2 - EyeGeometry::EYE_HEIGHT / 2;
 	this->right_pos_y = this->left_pos_y;
 }
 
@@ -190,7 +190,7 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 	i32 current_width = eye_size.width + w_offset;
 	i32 current_height = eye_size.height + h_offset;
 
-	i32 angle = AngrySadEye::ANGLE;
+	i32 angle = AngledEye::ANGLE;
 	i32 blink_offset = 0;
 
 	if (this->state == State::BLINKING) {
@@ -202,7 +202,7 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 		} else {
 			float t = (float)this->state.transition_ticks * BlinkAnimation::ANGLE;
 			i32 blink_size = (i32)(blink_function(t) * (float)current_height);
-			i32 min_blink_size = (i32)(NormalEye::EYE_RADIUS * 2);
+			i32 min_blink_size = (i32)(EyeGeometry::EYE_RADIUS * 2);
 			blink_size = std::max(blink_size, min_blink_size);
 			blink_offset = current_height - blink_size;
 			current_height = blink_size;
@@ -211,15 +211,15 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 			// and back to the original expression while opening.
 			if (this->expression == ANGRY || this->expression == SAD) {
 				if (t < 0.2f) {
-					angle = AngrySadEye::ANGLE;
+					angle = AngledEye::ANGLE;
 				} else if (t <= 0.4f) {
 					angle = std::max(BlinkAnimation::MIN_ANGLE,
-									 (i32)(AngrySadEye::ANGLE * (1.0f - (t - 0.2f) / 0.2f)));
+									 (i32)(AngledEye::ANGLE * (1.0f - (t - 0.2f) / 0.2f)));
 				} else if (t <= 0.8f) {
 					angle = std::max(BlinkAnimation::MIN_ANGLE,
-									 (i32)(AngrySadEye::ANGLE * ((t - 0.4f) / 0.4f)));
+									 (i32)(AngledEye::ANGLE * ((t - 0.4f) / 0.4f)));
 				} else {
-					angle = AngrySadEye::ANGLE;
+					angle = AngledEye::ANGLE;
 				}
 			}
 		}

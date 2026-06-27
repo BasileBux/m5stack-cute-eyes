@@ -1,8 +1,8 @@
 #pragma once
 #include <M5GFX.h>
 
-#include "constants.h"
-#include "types.h"
+#include "../constants.h"
+#include "../types.h"
 
 struct DoubleBuffer {
 	i32 width, height;

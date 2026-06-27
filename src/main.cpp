@@ -6,8 +6,8 @@
 M5GFX display;	// 320x240px, ~70Hz
 
 #include "constants.h"
-#include "double_buffer.h"
-#include "eyes.h"
+#include "eyes/double_buffer.h"
+#include "eyes/eyes.h"
 #include "types.h"
 
 void setup() {
@@ -70,9 +70,9 @@ void loop() {
 	M5.update();
 
 	static DoubleBuffer double_buf(
-		display, MAX_EYE_WIDTH * 2 + NormalEye::EYE_DISTANCE + NormalEye::EYE_RADIUS,
-		MAX_EYE_HEIGHT + NormalEye::EYE_RADIUS);
-	static Face face(double_buf.get_draw_buffer(), FOREGROUND_COLOR, NormalEye::EYE_RADIUS);
+		display, MAX_EYE_WIDTH * 2 + EyeGeometry::EYE_DISTANCE + EyeGeometry::EYE_RADIUS,
+		MAX_EYE_HEIGHT + EyeGeometry::EYE_RADIUS);
+	static Face face(double_buf.get_draw_buffer(), FOREGROUND_COLOR, EyeGeometry::EYE_RADIUS);
 
 	exec(face);
 
@@ -86,7 +86,7 @@ void loop() {
 		display.startWrite();
 
 		frame(double_buf, tick_count, face);
-
+		// SPI bus is used here
 		display.waitDMA();
 
 		hud(display);

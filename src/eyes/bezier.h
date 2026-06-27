@@ -2,12 +2,10 @@
 
 #include <M5GFX.h>
 
-#include "types.h"
+#include "../types.h"
+#include "constants.h"
 
-#define SQUARE_CORNER_CIRCLE 0.488
-#define STRAIGHT_SEGMENT 0.25
-
-#define ANGLED_CORNER_CIRCLE 0.06
+using namespace BezierConstants;
 
 // 4 points bezier curve
 struct Bezier {
