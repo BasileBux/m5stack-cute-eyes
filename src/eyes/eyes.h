@@ -11,7 +11,8 @@ struct Eye {
 	Eye(i32 pos_x, i32 pos_y, i32 width, i32 height);
 
 	void draw_normal(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinking) const;
-	void draw_small(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinking) const;
+	void draw_small(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinking,
+				float scale = SmallEye::SCALE) const;
 	void draw_down(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinking,
 				   i32 angle = AngledEye::ANGLE) const;
 	void draw_up(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinking,
@@ -34,12 +35,14 @@ class State {
    public:
 	unsigned long transition_ticks;
 
-	enum Value : uint8_t {
-		IDLE,
-		BLINKING,
-		NORMAL_TO_ANGLED,
-		ANGLED_TO_NORMAL,
-	};
+		enum Value : uint8_t {
+			IDLE,
+			BLINKING,
+			NORMAL_TO_ANGLED,
+			ANGLED_TO_NORMAL,
+			NORMAL_TO_WEIRDED,
+			WEIRDED_TO_NORMAL,
+		};
 
 	State()
 		: value(IDLE)

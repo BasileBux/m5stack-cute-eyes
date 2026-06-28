@@ -58,10 +58,13 @@ void Eye::draw_normal(m5gfx::M5Canvas &canvas, float radius, u16 color, bool bli
 	canvas.floodFill(this->pos_x + this->width / 2, this->pos_y + this->height / 2, color);
 }
 
-void Eye::draw_small(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinking) const {
-	const i32 small_width = (i32)(this->width * SmallEye::SCALE);
-	const i32 small_height = (i32)(this->height * SmallEye::SCALE);
-	const float small_radius = radius * SmallEye::SCALE;
+void Eye::draw_small(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinking,
+					 float scale) const {
+	const i32 small_width = (i32)(this->width * scale);
+	const i32 small_height = (i32)(this->height * scale);
+	// Keep the radius an integer so the rounded corners and straight edges align exactly
+	// and the flood fill cannot leak through a sub-pixel gap.
+	const float small_radius = (float)(i32)(radius * scale);
 	const i32 small_pos_x = this->pos_x + (this->width - small_width) / 2;
 	const i32 small_pos_y = this->pos_y + (this->height - small_height);
 
@@ -253,6 +256,32 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 		}
 	}
 
+	// Update weirded transitions first, then compute the scale from the resulting state.
+	if (this->state == State::NORMAL_TO_WEIRDED) {
+		this->state.transition_ticks++;
+		if (this->state.transition_ticks > TransitionAnimation::DURATION) {
+			this->state.transition_to(State::IDLE);
+			this->expression = WEIRDED;
+		}
+	} else if (this->state == State::WEIRDED_TO_NORMAL) {
+		this->state.transition_ticks++;
+		if (this->state.transition_ticks > TransitionAnimation::DURATION) {
+			this->state.transition_to(State::IDLE);
+			this->expression = NORMAL;
+		}
+	}
+
+	float right_eye_scale = 1.0f;
+	if (this->state == State::NORMAL_TO_WEIRDED) {
+		float progress = (float)this->state.transition_ticks / (float)TransitionAnimation::DURATION;
+		right_eye_scale = 1.0f - (1.0f - SmallEye::SCALE) * progress;
+	} else if (this->state == State::WEIRDED_TO_NORMAL) {
+		float progress = (float)this->state.transition_ticks / (float)TransitionAnimation::DURATION;
+		right_eye_scale = SmallEye::SCALE + (1.0f - SmallEye::SCALE) * progress;
+	} else if (this->expression == WEIRDED) {
+		right_eye_scale = SmallEye::SCALE;
+	}
+
 	// Shift the starting positions by half the offset so the eyes grow from their center
 	i32 left_x = this->left_pos_x - w_offset / 2;
 	i32 right_x = this->right_pos_x - w_offset / 2;
@@ -268,7 +297,11 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 	switch (this->expression) {
 	case NORMAL:
 		left_eye.draw_normal(canvas, this->radius, this->color, blinking);
-		right_eye.draw_normal(canvas, this->radius, this->color, blinking);
+		if (this->state == State::NORMAL_TO_WEIRDED || this->state == State::WEIRDED_TO_NORMAL) {
+			right_eye.draw_small(canvas, this->radius, this->color, blinking, right_eye_scale);
+		} else {
+			right_eye.draw_normal(canvas, this->radius, this->color, blinking);
+		}
 		break;
 	case ANGRY:
 		if (angle == 0) {
@@ -290,7 +323,7 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 		break;
 	case WEIRDED:
 		left_eye.draw_normal(canvas, this->radius, this->color, blinking);
-		right_eye.draw_small(canvas, this->radius, this->color, blinking);
+		right_eye.draw_small(canvas, this->radius, this->color, blinking, right_eye_scale);
 		break;
 	default:
 		left_eye.draw_normal(canvas, this->radius, this->color, blinking);
@@ -304,6 +337,8 @@ void Face::set_expression(FaceExpression new_expression) {
 	case NORMAL:
 		if (this->expression == ANGRY || this->expression == SAD) {
 			this->state.transition_to(State::ANGLED_TO_NORMAL);
+		} else if (this->expression == WEIRDED) {
+			this->state.transition_to(State::WEIRDED_TO_NORMAL);
 		}
 		return;	 // Return as we don't want to change the expression immediately, but rather after the transition
 	case ANGRY:
@@ -313,7 +348,9 @@ void Face::set_expression(FaceExpression new_expression) {
 		}
 		break;
 	case WEIRDED:
-		// No transition for WEIRDED, just set the expression
+		if (this->expression == NORMAL) {
+			this->state.transition_to(State::NORMAL_TO_WEIRDED);
+		}
 		break;
 	default: return;  // Invalid expression, do nothing
 	}

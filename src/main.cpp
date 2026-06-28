@@ -35,7 +35,10 @@ void frame(DoubleBuffer &double_buff, unsigned long tick_count, Face &face) {
 
 	if (face.ticks_before_blink == 0) {
 		face.ticks_before_blink = esp_random() % BlinkAnimation::MAX_WAIT_TICKS;
-		face.state.transition_to(State::BLINKING);
+		// Don't interrupt expression transitions with a blink.
+		if (face.state == State::IDLE) {
+			face.state.transition_to(State::BLINKING);
+		}
 	} else {
 		face.ticks_before_blink--;
 	}
