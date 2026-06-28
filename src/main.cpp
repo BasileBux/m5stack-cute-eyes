@@ -55,7 +55,8 @@ void exec(Face &face) {
 	} else if (M5.BtnB.wasPressed()) {
 		face.set_expression(FaceExpression::ANGRY);
 	} else if (M5.BtnC.wasPressed()) {
-		face.set_expression(FaceExpression::SAD);
+		// face.set_expression(FaceExpression::SAD);
+		face.set_expression(FaceExpression::WEIRDED);
 	}
 }
 

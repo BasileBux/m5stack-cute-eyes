@@ -58,6 +58,17 @@ void Eye::draw_normal(m5gfx::M5Canvas &canvas, float radius, u16 color, bool bli
 	canvas.floodFill(this->pos_x + this->width / 2, this->pos_y + this->height / 2, color);
 }
 
+void Eye::draw_small(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinking) const {
+	const i32 small_width = (i32)(this->width * SmallEye::SCALE);
+	const i32 small_height = (i32)(this->height * SmallEye::SCALE);
+	const float small_radius = radius * SmallEye::SCALE;
+	const i32 small_pos_x = this->pos_x + (this->width - small_width) / 2;
+	const i32 small_pos_y = this->pos_y + (this->height - small_height);
+
+	Eye small_eye(small_pos_x, small_pos_y, small_width, small_height);
+	small_eye.draw_normal(canvas, small_radius, color, blinking);
+}
+
 void Eye::draw_down(m5gfx::M5Canvas &canvas, float radius, u16 color, bool blinking,
 					i32 angle) const {
 	const i32 diagonal = angle * 2 * 2;
@@ -277,9 +288,9 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 			right_eye.draw_down(canvas, this->radius, this->color, blinking, angle);
 		}
 		break;
-	case WEIRDED:  // TODO: implement weirded expression
+	case WEIRDED:
 		left_eye.draw_normal(canvas, this->radius, this->color, blinking);
-		right_eye.draw_normal(canvas, this->radius, this->color, blinking);
+		right_eye.draw_small(canvas, this->radius, this->color, blinking);
 		break;
 	default:
 		left_eye.draw_normal(canvas, this->radius, this->color, blinking);

@@ -28,6 +28,10 @@ namespace AngledEye {
 	constexpr i32 DIAGONAL = ANGLE * 2 * 2;
 }  // namespace AngledEye
 
+namespace SmallEye {
+	constexpr float SCALE = 0.75f;
+};
+
 namespace TransitionAnimation {
 	constexpr u32 DURATION = 8;	 // ticks
 	constexpr float ANGLE = (float)AngledEye::ANGLE / (float)DURATION;
