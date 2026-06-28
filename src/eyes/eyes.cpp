@@ -284,7 +284,9 @@ void Face::draw(m5gfx::M5Canvas &canvas, unsigned long tick_count) {
 
 	// Shift the starting positions by half the offset so the eyes grow from their center
 	i32 left_x = this->left_pos_x - w_offset / 2;
-	i32 right_x = this->right_pos_x - w_offset / 2;
+	// In weirded mode, shrink the gap between the eyes so the right eye slides closer to the left.
+	i32 right_eye_offset_x = (i32)(EyeGeometry::EYE_DISTANCE * (1.0f - right_eye_scale));
+	i32 right_x = this->right_pos_x - right_eye_offset_x - w_offset / 2;
 	i32 pos_y = this->left_pos_y - h_offset / 2 + y_offset + blink_offset;
 
 	Eye left_eye(left_x, pos_y, current_width, current_height);
